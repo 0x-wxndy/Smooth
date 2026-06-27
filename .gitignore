@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+backend/dist/
+backend/.env
+
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env & secrets
+.env
+*.pem

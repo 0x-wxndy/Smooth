@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_assets.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/models/course_model.dart';
 import 'smooth_components.dart';
@@ -19,28 +20,20 @@ class CourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (compact) {
       return SizedBox(
-        width: 160,
-        child: SmoothCard(
-          onTap: onTap,
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Thumbnail(course: course, height: 80),
-              const SizedBox(height: 10),
-              Text(
-                course.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        width: 148,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final h = constraints.maxHeight.isFinite ? constraints.maxHeight : 128.0;
+            return GestureDetector(
+              onTap: onTap,
+              child: _DarkCourseTile(
+                course: course,
+                height: h,
+                radius: 14,
+                showTitle: true,
               ),
-              const SizedBox(height: 4),
-              Text(
-                course.difficultyLabel,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       );
     }
@@ -51,7 +44,11 @@ class CourseCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Thumbnail(course: course, width: 88, height: 88),
+          SizedBox(
+            width: 88,
+            height: 88,
+            child: _DarkCourseTile(course: course, height: 88, radius: 14),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -59,7 +56,7 @@ class CourseCard extends StatelessWidget {
               children: [
                 Text(
                   course.title,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -76,30 +73,14 @@ class CourseCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: course.isFree
-                            ? AppColors.success.withValues(alpha: 0.12)
-                            : AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        course.priceLabel,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: course.isFree ? AppColors.success : AppColors.primary,
-                        ),
-                      ),
-                    ),
+                    _PricePill(course: course),
                     if (course.progressPercent != null) ...[
                       const Spacer(),
                       Text(
                         '${course.progressPercent!.round()}%',
                         style: const TextStyle(
                           color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
                       ),
@@ -111,6 +92,7 @@ class CourseCard extends StatelessWidget {
                   LinearProgressIndicator(
                     value: course.progressPercent! / 100,
                     backgroundColor: AppColors.surfaceVariant,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ],
@@ -123,31 +105,109 @@ class CourseCard extends StatelessWidget {
   }
 }
 
-class _Thumbnail extends StatelessWidget {
-  const _Thumbnail({
-    required this.course,
-    this.width,
-    this.height = 88,
-  });
-
+class _PricePill extends StatelessWidget {
+  const _PricePill({required this.course});
   final Course course;
-  final double? width;
-  final double height;
 
   @override
   Widget build(BuildContext context) {
+    final free = Localizations.localeOf(context).languageCode == 'ar'
+        ? 'مجاني'
+        : Localizations.localeOf(context).languageCode == 'fr'
+            ? 'Gratuit'
+            : 'Free';
     return Container(
-      width: width ?? double.infinity,
-      height: height,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: AppColors.gradientPrimary,
+        color: course.isFree
+            ? AppColors.success.withValues(alpha: 0.12)
+            : AppColors.accentPurple.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Center(
-        child: Icon(
-          _categoryIcon(course.category),
-          color: Colors.white.withValues(alpha: 0.9),
-          size: 28,
+      child: Text(
+        course.priceLabelLocalized(free),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: course.isFree ? AppColors.success : AppColors.accentPurple,
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkCourseTile extends StatelessWidget {
+  const _DarkCourseTile({
+    required this.course,
+    this.height = 88,
+    this.radius = 14,
+    this.showTitle = false,
+  });
+
+  final Course course;
+  final double height;
+  final double radius;
+  final bool showTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              AppAssets.courseThumb(course.category.name),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: AppColors.navy),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.navy.withValues(alpha: 0.2),
+                    AppColors.navy.withValues(alpha: 0.88),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showTitle) ...[
+                    const Spacer(),
+                    Text(
+                      course.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ] else
+                    const Spacer(),
+                  Row(
+                    children: [
+                      Icon(_categoryIcon(course.category), color: Colors.white, size: 18),
+                      const Spacer(),
+                      const Icon(Icons.play_circle_fill, color: Colors.white70, size: 22),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -177,6 +237,86 @@ class _Thumbnail extends StatelessWidget {
   }
 }
 
+class FreelancerMiniCard extends StatelessWidget {
+  const FreelancerMiniCard({
+    super.key,
+    required this.name,
+    required this.role,
+    required this.rate,
+    required this.rating,
+    required this.avatarUrl,
+    required this.tags,
+    this.onTap,
+  });
+
+  final String name;
+  final String role;
+  final String rate;
+  final double rating;
+  final String avatarUrl;
+  final List<String> tags;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 132,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundImage: NetworkImage(avatarUrl),
+              onBackgroundImageError: (_, __) {},
+            ),
+            const SizedBox(height: 8),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            Text(
+              role,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 4,
+              children: tags
+                  .take(2)
+                  .map(
+                    (t) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(t, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600)),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '★ ${rating.toStringAsFixed(1)} · $rate',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.accentOrange),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class ServiceCard extends StatelessWidget {
   const ServiceCard({super.key, required this.service, this.onTap});
 
@@ -194,9 +334,9 @@ class ServiceCard extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                child: const Icon(Icons.person, color: AppColors.primary, size: 20),
+                radius: 22,
+                backgroundColor: AppColors.accentOrange.withValues(alpha: 0.15),
+                child: const Icon(Icons.person, color: AppColors.accentOrange, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -205,7 +345,7 @@ class ServiceCard extends StatelessWidget {
                   children: [
                     Text(
                       service.title as String,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     Text(
                       service.providerName as String? ?? '',
@@ -228,7 +368,7 @@ class ServiceCard extends StatelessWidget {
             children: [
               Text(
                 service.priceLabel as String,
-                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary),
               ),
               const SizedBox(width: 12),
               Text(
@@ -264,7 +404,7 @@ class JobCard extends StatelessWidget {
         children: [
           Text(
             job.title as String,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           ),
           const SizedBox(height: 6),
           Text(
@@ -298,7 +438,7 @@ class _Tag extends StatelessWidget {
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }

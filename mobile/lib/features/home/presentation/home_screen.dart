@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/l10n/app_localizations.dart';
+import '../../../core/theme/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/smooth_components.dart';
 import '../../../shared/widgets/cards.dart';
+import '../../../shared/widgets/smooth_button.dart';
+import '../../../shared/widgets/hub_hero.dart';
 import '../../../shared/models/course_model.dart';
 
 class HomeTab extends ConsumerWidget {
@@ -14,26 +18,12 @@ class HomeTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
+    final s = S.of(context);
     final statsAsync = ref.watch(gamificationProvider);
     final coursesAsync = ref.watch(coursesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Smooth'),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () => context.push('/search')),
-          IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () {}),
-          statsAsync.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (stats) => Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: CoinBadge(amount: stats.coins),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.navy,
       body: AsyncValueContent<List<Course>>(
         value: coursesAsync,
         builder: (courses) {
@@ -45,107 +35,187 @@ class HomeTab extends ConsumerWidget {
             }
           }
           continueCourse ??= courses.isNotEmpty ? courses.first : null;
-          final inProgress = continueCourse;
+          final freeCourses = courses.where((c) => c.isFree).toList();
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              statsAsync.when(
-                loading: () => const SizedBox(height: 48),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (stats) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: HubHeroShell(
+                  brandTitle: s.appName,
+                  heroTitle: s.homeHeroTitle,
+                  heroSubtitle: s.homeHeroSubtitle,
+                  coverUrl: AppAssets.heroOffice,
+                  coverHeight: 320,
+                  trailing: statsAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (stats) => LevelBadge(
+                      level: stats.level,
+                      label: stats.level <= 3 ? s.rookie : 'Lv.${stats.level}',
+                    ),
+                  ),
+                  navItems: [
+                    HubNavItem(label: s.home, active: true, onTap: () {}),
+                    HubNavItem(label: s.freeLibraryNav, onTap: () => context.go('/learn')),
+                    HubNavItem(label: s.servicesHubNav, onTap: () => context.go('/market')),
+                    HubNavItem(label: s.shopNav, onTap: () => context.go('/market')),
+                    HubNavItem(label: s.aboutNav, onTap: () => context.push('/profile')),
+                  ],
+                  primaryCta: HubCta(
+                    label: s.startLearningFree,
+                    onPressed: () => context.go('/learn'),
+                  ),
+                  secondaryCta: HubCta(
+                    label: s.bookInHub,
+                    onPressed: () => context.go('/market'),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: HubContentSheet(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: statsAsync.when(
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
+                          data: (stats) => Row(
                             children: [
-                              Text(
-                                'Good morning, ${user?.displayName ?? 'Learner'}',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                              Expanded(
+                                child: SoftMetricCard(
+                                  background: AppColors.pastelMint,
+                                  icon: Icons.local_fire_department_rounded,
+                                  iconColor: AppColors.warning,
+                                  label: s.streak,
+                                  value: '${stats.currentStreak}d',
+                                ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Level ${stats.level} · ${stats.xp} XP',
-                                style: const TextStyle(color: AppColors.textSecondary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: SoftMetricCard(
+                                  background: AppColors.pastelPeach,
+                                  icon: Icons.monetization_on_rounded,
+                                  iconColor: AppColors.coin,
+                                  label: s.coins,
+                                  value: '${stats.coins}',
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: SoftMetricCard(
+                                  background: AppColors.pastelLavender,
+                                  icon: Icons.bolt_rounded,
+                                  iconColor: AppColors.accentPurple,
+                                  label: s.xp,
+                                  value: '${stats.xp}',
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        LevelBadge(level: stats.level),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: stats.levelProgress,
-                        minHeight: 6,
-                        backgroundColor: AppColors.surfaceVariant,
                       ),
-                    ),
-                    const SizedBox(height: 28),
-                  ],
-                ),
-              ),
-              if (inProgress != null) ...[
-                const SectionHeader(title: 'Continue learning'),
-                CourseCard(
-                  course: inProgress,
-                  onTap: () => context.push('/courses/${inProgress.id}'),
-                ),
-                const SizedBox(height: 20),
-              ],
-              const SectionHeader(title: 'Categories'),
-              SizedBox(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: AppConstants.categories
-                      .map((c) => SmoothChipFilter(label: c.$1, selected: false, onTap: () {}))
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SectionHeader(
-                title: 'Recommended for you',
-                actionLabel: 'See all',
-                onAction: () => context.go('/learn'),
-              ),
-              SizedBox(
-                height: 180,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: courses.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (_, i) => CourseCard(
-                    course: courses[i],
-                    compact: true,
-                    onTap: () => context.push('/courses/${courses[i].id}'),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _QuickActions(onAi: () => context.push('/ai'), onGames: () => context.push('/games')),
-              const SizedBox(height: 16),
-              statsAsync.when(
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (stats) => SmoothCard(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.local_fire_department, color: AppColors.warning, size: 32),
-                      const SizedBox(width: 14),
-                      Expanded(
+                      if (continueCourse != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SectionHeader(
+                                title: s.continueLearning,
+                                icon: Icons.play_circle_outline,
+                              ),
+                              CourseCard(
+                                course: continueCourse,
+                                onTap: () => context.push('/courses/${continueCourse!.id}'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        child: BorderedSection(
+                          borderColor: AppColors.primary,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SectionHeader(
+                                title: s.freeLibrary,
+                                icon: Icons.school_rounded,
+                                iconColor: AppColors.primary,
+                              ),
+                              Text(
+                                s.freeLibrarySub,
+                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                              ),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                height: 150,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: freeCourses.length,
+                                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                                  itemBuilder: (_, i) => CourseCard(
+                                    course: freeCourses[i],
+                                    compact: true,
+                                    onTap: () => context.push('/courses/${freeCourses[i].id}'),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${stats.currentStreak}-day streak!', style: const TextStyle(fontWeight: FontWeight.w700)),
-                            const Text(
-                              'Keep learning to earn bonus coins',
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            SectionHeader(title: s.categories),
+                            SizedBox(
+                              height: 40,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: AppConstants.categories
+                                    .map(
+                                      (c) => SmoothChipFilter(
+                                        label: c.$1,
+                                        selected: false,
+                                        onTap: () => context.go('/learn'),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _HubTile(
+                                    icon: Icons.auto_awesome,
+                                    label: s.aiAssistant,
+                                    color: AppColors.accentPurple,
+                                    onTap: () => context.push('/ai'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _HubTile(
+                                    icon: Icons.videogame_asset_rounded,
+                                    label: s.games,
+                                    color: AppColors.accentPink,
+                                    onTap: () => context.push('/games'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            SmoothButton(
+                              label: s.exploreMarket,
+                              variant: SmoothButtonVariant.outline,
+                              onPressed: () => context.go('/market'),
                             ),
                           ],
                         ),
@@ -162,52 +232,18 @@ class HomeTab extends ConsumerWidget {
   }
 }
 
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.onAi, required this.onGames});
-
-  final VoidCallback onAi;
-  final VoidCallback onGames;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.auto_awesome,
-            label: 'AI Assistant',
-            gradient: AppColors.gradientPrimary,
-            onTap: onAi,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.videogame_asset_outlined,
-            label: 'Games',
-            color: AppColors.secondary,
-            onTap: onGames,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
+class _HubTile extends StatelessWidget {
+  const _HubTile({
     required this.icon,
     required this.label,
+    required this.color,
     required this.onTap,
-    this.gradient,
-    this.color,
   });
 
   final IconData icon;
   final String label;
+  final Color color;
   final VoidCallback onTap;
-  final Gradient? gradient;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -215,25 +251,18 @@ class _ActionTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Ink(
-        decoration: BoxDecoration(
-          gradient: gradient,
-          color: gradient == null ? color?.withValues(alpha: 0.12) : null,
-          borderRadius: BorderRadius.circular(16),
-          border: gradient == null ? Border.all(color: AppColors.border) : null,
-        ),
         padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
         child: Row(
           children: [
-            Icon(icon, color: gradient != null ? Colors.white : color),
+            Icon(icon, color: color),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: gradient != null ? Colors.white : AppColors.textPrimary,
-                ),
-              ),
+              child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
             ),
           ],
         ),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../features/payments/payment_models.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/smooth_button.dart';
@@ -13,6 +16,7 @@ class ServiceDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final serviceAsync = ref.watch(serviceProvider(serviceId));
+    final s = S.of(context);
 
     return AsyncValueContent(
       value: serviceAsync,
@@ -22,7 +26,7 @@ class ServiceDetailScreen extends ConsumerWidget {
         }
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Service')),
+          appBar: AppBar(title: Text(s.services)),
           body: ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -40,10 +44,35 @@ class ServiceDetailScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  _StatBox(label: 'Price', value: service.priceLabel),
+                  _StatBox(label: s.price, value: service.priceLabel),
                   const SizedBox(width: 12),
-                  _StatBox(label: 'Delivery', value: '${service.deliveryDays} days'),
+                  _StatBox(label: s.deliveryDays, value: '${service.deliveryDays}'),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8A317).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE8A317).withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFE8A317)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        s.payWithEdahabia,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Text(
+                      'CIB · Card',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               const Text('FAQ', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
@@ -64,11 +93,31 @@ class ServiceDetailScreen extends ConsumerWidget {
                     child: SmoothButton(
                       label: 'Request quote',
                       variant: SmoothButtonVariant.outline,
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Quote request sent (demo)')),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(child: SmoothButton(label: 'Book now', onPressed: () {})),
+                  Expanded(
+                    child: SmoothButton(
+                      label: s.bookNow,
+                      onPressed: () {
+                        context.push(
+                          '/checkout',
+                          extra: PaymentCheckoutArgs(
+                            title: service.title,
+                            subtitle: service.providerName,
+                            amountCentimes: service.priceCents,
+                            purpose: PaymentPurpose.service,
+                            itemId: serviceId,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),

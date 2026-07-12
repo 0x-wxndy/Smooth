@@ -21,6 +21,7 @@ abstract final class DatabaseSchema {
       current_streak INTEGER NOT NULL DEFAULT 0,
       longest_streak INTEGER NOT NULL DEFAULT 0,
       last_login_date TEXT,
+      ai_token_bank INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   ''';
@@ -128,6 +129,19 @@ abstract final class DatabaseSchema {
     )
   ''';
 
+  static const gameSessions = '''
+    CREATE TABLE game_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      game_id TEXT NOT NULL,
+      score INTEGER NOT NULL DEFAULT 0,
+      coins_earned INTEGER NOT NULL DEFAULT 0,
+      played_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (game_id) REFERENCES educational_games(id)
+    )
+  ''';
+
   static const aiUsage = '''
     CREATE TABLE ai_usage (
       user_id TEXT NOT NULL,
@@ -156,6 +170,7 @@ abstract final class DatabaseSchema {
         services,
         jobs,
         games,
+        gameSessions,
         aiUsage,
         meta,
       ];

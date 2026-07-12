@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/config/app_config.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/marketplace_model.dart';
@@ -184,6 +185,18 @@ final gamesProvider = FutureProvider<List<EducationalGame>>((ref) async {
   return ref.watch(databaseProvider).getGames();
 });
 
+final myCoursesProvider = FutureProvider<List<Course>>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null) return [];
+  return ref.watch(databaseProvider).getCoursesByTeacher(user.id);
+});
+
+final myServicesProvider = FutureProvider<List<FreelanceService>>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null) return [];
+  return ref.watch(databaseProvider).getServicesByProvider(user.id);
+});
+
 final searchProvider = FutureProvider.family<
     ({List<Course> courses, List<FreelanceService> services, List<JobPosting> jobs}),
     String>((ref, query) async {
@@ -195,4 +208,12 @@ final aiUsageProvider = FutureProvider<int>((ref) async {
   final userId = ref.watch(authProvider).user?.id;
   if (userId == null) return 0;
   return ref.watch(databaseProvider).getAiUsageToday(userId);
+});
+
+final aiQuotaProvider = FutureProvider<AiQuota>((ref) async {
+  final userId = ref.watch(authProvider).user?.id;
+  if (userId == null) {
+    return const AiQuota(freeUsed: 0, freeLimit: AppConfig.aiDailyLimit, bank: 0);
+  }
+  return ref.watch(databaseProvider).getAiQuota(userId);
 });

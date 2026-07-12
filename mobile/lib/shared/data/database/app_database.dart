@@ -26,6 +26,34 @@ class AppDatabase {
         }
         await DatabaseSeeder.seedIfNeeded(db);
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Prototype: recreate seed data when schema/prices change.
+        final tables = [
+          'lesson_progress',
+          'enrollments',
+          'lessons',
+          'course_modules',
+          'quizzes',
+          'ai_usage',
+          'game_sessions',
+          'educational_games',
+          'job_applications',
+          'job_postings',
+          'services',
+          'courses',
+          'gamification_wallets',
+          'refresh_tokens',
+          'users',
+          'app_meta',
+        ];
+        for (final t in tables) {
+          await db.execute('DROP TABLE IF EXISTS $t');
+        }
+        for (final sql in DatabaseSchema.all) {
+          await db.execute(sql);
+        }
+        await DatabaseSeeder.seedIfNeeded(db);
+      },
     );
     await DatabaseSeeder.seedIfNeeded(_db!);
   }
@@ -78,6 +106,7 @@ class AppDatabase {
       'coins': 50,
       'xp': 0,
       'level': 1,
+      'ai_token_bank': 3,
     });
     return AppUser(id: id, email: email, displayName: displayName, role: role);
   }
@@ -110,6 +139,199 @@ class AppDatabase {
       level: r['level'] as int,
       currentStreak: r['current_streak'] as int,
       longestStreak: r['longest_streak'] as int,
+      aiTokenBank: (r['ai_token_bank'] as int?) ?? 0,
+    );
+  }
+
+  Future<GamificationStats> awardRewards(String userId, {int coins = 0, int xp = 0}) async {
+    final current = await getWallet(userId);
+    final newXp = current.xp + xp;
+    final newLevel = 1 + (newXp ~/ 300);
+    await db.update(
+      'gamification_wallets',
+      {
+        'coins': current.coins + coins,
+        'xp': newXp,
+        'level': newLevel,
+      },
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return getWallet(userId);
+  }
+
+  Future<bool> spendCoins(String userId, int amount) async {
+    final current = await getWallet(userId);
+    if (current.coins < amount) return false;
+    await db.update(
+      'gamification_wallets',
+      {'coins': current.coins - amount},
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return true;
+  }
+
+  Future<RewardResult> completeLesson({
+    required String userId,
+    required String courseId,
+    required String lessonId,
+  }) async {
+    final existing = await db.query(
+      'lesson_progress',
+      where: 'user_id = ? AND lesson_id = ? AND completed = 1',
+      whereArgs: [userId, lessonId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      return const RewardResult(alreadyDone: true, message: 'Lesson already completed');
+    }
+
+    await enrollCourse(userId, courseId);
+    await db.insert(
+      'lesson_progress',
+      {
+        'user_id': userId,
+        'lesson_id': lessonId,
+        'completed': 1,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    // Recalculate course progress
+    final modules = await getCourseModules(courseId, userId: userId);
+    final allLessons = modules.expand((m) => m.lessons).toList();
+    final done = allLessons.where((l) => l.completed).length;
+    final percent = allLessons.isEmpty ? 0.0 : (done / allLessons.length) * 100;
+    await db.update(
+      'enrollments',
+      {'progress_percent': percent},
+      where: 'user_id = ? AND course_id = ?',
+      whereArgs: [userId, courseId],
+    );
+
+    var coins = AppConfig.lessonCoinReward;
+    var xp = AppConfig.lessonXpReward;
+    if (percent >= 100) {
+      coins += AppConfig.courseCompleteCoinBonus;
+      xp += AppConfig.courseCompleteXpBonus;
+    }
+
+    await awardRewards(userId, coins: coins, xp: xp);
+    return RewardResult(
+      coins: coins,
+      xp: xp,
+      message: percent >= 100 ? 'Course completed!' : 'Lesson completed!',
+    );
+  }
+
+  Future<bool> hasRewardedGameToday(String userId, String gameId) async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final rows = await db.query(
+      'game_sessions',
+      where: 'user_id = ? AND game_id = ? AND played_at LIKE ?',
+      whereArgs: [userId, gameId, '$today%'],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
+  Future<RewardResult> completeGameSession({
+    required String userId,
+    required String gameId,
+    required int scorePercent,
+  }) async {
+    final games = await getGames();
+    EducationalGame? game;
+    for (final g in games) {
+      if (g.id == gameId) {
+        game = g;
+        break;
+      }
+    }
+    if (game == null) {
+      return const RewardResult(alreadyDone: true, message: 'Game not found');
+    }
+
+    final already = await hasRewardedGameToday(userId, gameId);
+    final passed = scorePercent >= 60;
+    var coins = 0;
+    var xp = 0;
+    if (passed && !already) {
+      coins = game.coinReward;
+      xp = game.xpReward;
+      await awardRewards(userId, coins: coins, xp: xp);
+    }
+
+    await db.insert('game_sessions', {
+      'id': 'gs_${DateTime.now().millisecondsSinceEpoch}',
+      'user_id': userId,
+      'game_id': gameId,
+      'score': scorePercent,
+      'coins_earned': coins,
+      'played_at': DateTime.now().toUtc().toIso8601String(),
+    });
+
+    if (!passed) {
+      return const RewardResult(message: 'Score 60%+ to earn rewards');
+    }
+    if (already) {
+      return const RewardResult(alreadyDone: true, message: 'Daily reward already claimed — nice practice!');
+    }
+    return RewardResult(coins: coins, xp: xp, message: 'Rewards unlocked!');
+  }
+
+  Future<AiQuota> getAiQuota(String userId) async {
+    final used = await getAiUsageToday(userId);
+    final wallet = await getWallet(userId);
+    return AiQuota(
+      freeUsed: used,
+      freeLimit: AppConfig.aiDailyLimit,
+      bank: wallet.aiTokenBank,
+    );
+  }
+
+  /// Consumes free daily quota first, then bonus bank tokens.
+  Future<bool> consumeAiToken(String userId) async {
+    final quota = await getAiQuota(userId);
+    if (!quota.canSend) return false;
+
+    if (quota.freeRemaining > 0) {
+      await incrementAiUsage(userId);
+      return true;
+    }
+
+    final wallet = await getWallet(userId);
+    if (wallet.aiTokenBank <= 0) return false;
+    await db.update(
+      'gamification_wallets',
+      {'ai_token_bank': wallet.aiTokenBank - 1},
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return true;
+  }
+
+  Future<bool> unlockAiTokens({
+    required String userId,
+    required int coinCost,
+    required int tokens,
+  }) async {
+    if (coinCost > 0) {
+      final ok = await spendCoins(userId, coinCost);
+      if (!ok) return false;
+    }
+    await creditAiTokens(userId, tokens);
+    return true;
+  }
+
+  Future<void> creditAiTokens(String userId, int tokens) async {
+    final wallet = await getWallet(userId);
+    await db.update(
+      'gamification_wallets',
+      {'ai_token_bank': wallet.aiTokenBank + tokens},
+      where: 'user_id = ?',
+      whereArgs: [userId],
     );
   }
 
@@ -198,6 +420,146 @@ class AppDatabase {
       'enrollments',
       {'user_id': userId, 'course_id': courseId, 'progress_percent': 0, 'bookmarked': 0},
       conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  Future<Course> createCourse({
+    required String teacherId,
+    required String title,
+    required String description,
+    required CourseCategory category,
+    required Difficulty difficulty,
+    required bool isFree,
+    int? priceCents,
+    int durationMinutes = 60,
+  }) async {
+    final id = 'course_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('courses', {
+      'id': id,
+      'teacher_id': teacherId,
+      'title': title.trim(),
+      'description': description.trim(),
+      'category': category.name,
+      'difficulty': difficulty.name,
+      'duration_minutes': durationMinutes,
+      'skills': category.name,
+      'is_free': isFree ? 1 : 0,
+      'price_cents': isFree ? null : (priceCents ?? 0),
+      'rating_avg': 5.0,
+      'enrollment_count': 0,
+    });
+
+    final moduleId = 'mod_$id';
+    await db.insert('course_modules', {
+      'id': moduleId,
+      'course_id': id,
+      'title': 'Module 1',
+      'sort_order': 0,
+    });
+    await db.insert('lessons', {
+      'id': 'lesson_${id}_1',
+      'module_id': moduleId,
+      'title': 'Introduction',
+      'duration_minutes': 15,
+      'sort_order': 0,
+    });
+
+    await awardRewards(
+      teacherId,
+      coins: AppConfig.postCourseCoins,
+      xp: AppConfig.postCourseXp,
+    );
+
+    final course = await getCourse(id, userId: teacherId);
+    return course!;
+  }
+
+  Future<List<Course>> getCoursesByTeacher(String teacherId) async {
+    final rows = await db.rawQuery('''
+      SELECT c.*, u.display_name AS teacher_name
+      FROM courses c
+      JOIN users u ON u.id = c.teacher_id
+      WHERE c.teacher_id = ?
+      ORDER BY c.title ASC
+    ''', [teacherId]);
+    return rows.map((r) => _mapCourse(r)).toList();
+  }
+
+  Future<FreelanceService> createService({
+    required String providerId,
+    required String title,
+    required String description,
+    required String category,
+    required int priceCents,
+    int deliveryDays = 7,
+  }) async {
+    final id = 'svc_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('services', {
+      'id': id,
+      'provider_id': providerId,
+      'title': title.trim(),
+      'description': description.trim(),
+      'category': category,
+      'price_cents': priceCents,
+      'delivery_days': deliveryDays,
+      'rating_avg': 5.0,
+      'review_count': 0,
+    });
+
+    await awardRewards(
+      providerId,
+      coins: AppConfig.postServiceCoins,
+      xp: AppConfig.postServiceXp,
+    );
+
+    final service = await getService(id);
+    return service!;
+  }
+
+  Future<List<FreelanceService>> getServicesByProvider(String providerId) async {
+    final rows = await db.rawQuery('''
+      SELECT s.*, u.display_name AS provider_name
+      FROM services s
+      JOIN users u ON u.id = s.provider_id
+      WHERE s.provider_id = ?
+      ORDER BY s.title ASC
+    ''', [providerId]);
+    return rows.map(_mapService).toList();
+  }
+
+  /// Daily bonus for maintaining a strong rating (demo).
+  Future<RewardResult> claimCreatorRatingBonus(String userId) async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final key = 'rating_bonus_$userId';
+    final rows = await db.query('app_meta', where: 'key = ?', whereArgs: [key], limit: 1);
+    if (rows.isNotEmpty && rows.first['value'] == today) {
+      return const RewardResult(alreadyDone: true, message: 'Bonus already claimed today');
+    }
+    await db.insert(
+      'app_meta',
+      {'key': key, 'value': today},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await awardRewards(
+      userId,
+      coins: AppConfig.ratingBonusCoins,
+      xp: AppConfig.ratingBonusXp,
+    );
+    return RewardResult(
+      coins: AppConfig.ratingBonusCoins,
+      xp: AppConfig.ratingBonusXp,
+      message: 'Rating bonus claimed!',
+    );
+  }
+
+  Future<void> awardBookingToProvider(String serviceId) async {
+    final rows = await db.query('services', where: 'id = ?', whereArgs: [serviceId], limit: 1);
+    if (rows.isEmpty) return;
+    final providerId = rows.first['provider_id'] as String;
+    await awardRewards(
+      providerId,
+      coins: AppConfig.bookingReceivedCoins,
+      xp: AppConfig.bookingReceivedXp,
     );
   }
 

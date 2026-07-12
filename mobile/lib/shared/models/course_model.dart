@@ -1,3 +1,5 @@
+import '../../core/utils/money.dart';
+
 enum CourseCategory {
   softwareDev,
   uiUx,
@@ -57,7 +59,12 @@ class Course {
 
   String get priceLabel {
     if (isFree) return 'Free';
-    return '\$${((priceCents ?? 0) / 100).toStringAsFixed(0)}';
+    return Money.format(priceCents ?? 0);
+  }
+
+  String priceLabelLocalized(String freeLabel) {
+    if (isFree) return freeLabel;
+    return Money.format(priceCents ?? 0);
   }
 
   String get difficultyLabel {

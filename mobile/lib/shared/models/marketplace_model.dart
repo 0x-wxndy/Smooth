@@ -1,3 +1,5 @@
+import '../../core/utils/money.dart';
+
 class FreelanceService {
   const FreelanceService({
     required this.id,
@@ -23,7 +25,9 @@ class FreelanceService {
   final String? providerAvatar;
   final String? category;
 
-  String get priceLabel => 'From \$${(priceCents / 100).toStringAsFixed(0)}';
+  String get priceLabel => Money.format(priceCents);
+
+  String priceFromLabel(String fromPrefix) => '$fromPrefix ${Money.format(priceCents)}';
 }
 
 class JobPosting {
@@ -49,12 +53,13 @@ class JobPosting {
   final int? salaryMax;
   final String? experienceLevel;
 
+  /// salaryMin/Max stored as whole DZD.
   String get salaryLabel {
-    if (salaryMin == null && salaryMax == null) return 'Competitive';
+    if (salaryMin == null && salaryMax == null) return '—';
     if (salaryMin != null && salaryMax != null) {
-      return '\$${salaryMin! ~/ 1000}k–\$${salaryMax! ~/ 1000}k';
+      return '${Money.format(salaryMin! * 100)} – ${Money.format(salaryMax! * 100)}';
     }
-    return 'From \$${(salaryMin ?? salaryMax)! ~/ 1000}k';
+    return Money.format((salaryMin ?? salaryMax)! * 100);
   }
 }
 
@@ -65,6 +70,7 @@ class GamificationStats {
     this.level = 1,
     this.currentStreak = 0,
     this.longestStreak = 0,
+    this.aiTokenBank = 0,
   });
 
   final int coins;
@@ -72,8 +78,39 @@ class GamificationStats {
   final int level;
   final int currentStreak;
   final int longestStreak;
+  final int aiTokenBank;
 
   double get levelProgress => (xp % 300) / 300;
+}
+
+class AiQuota {
+  const AiQuota({
+    required this.freeUsed,
+    required this.freeLimit,
+    required this.bank,
+  });
+
+  final int freeUsed;
+  final int freeLimit;
+  final int bank;
+
+  int get freeRemaining => (freeLimit - freeUsed).clamp(0, freeLimit);
+  int get totalRemaining => freeRemaining + bank;
+  bool get canSend => totalRemaining > 0;
+}
+
+class RewardResult {
+  const RewardResult({
+    this.coins = 0,
+    this.xp = 0,
+    this.alreadyDone = false,
+    this.message,
+  });
+
+  final int coins;
+  final int xp;
+  final bool alreadyDone;
+  final String? message;
 }
 
 class ChatMessage {

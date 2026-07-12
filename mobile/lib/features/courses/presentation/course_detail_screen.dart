@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../features/payments/payment_models.dart';
+import '../../../shared/models/course_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/smooth_button.dart';
+import '../../../shared/widgets/smooth_components.dart';
 
 class CourseDetailScreen extends ConsumerWidget {
   const CourseDetailScreen({super.key, required this.courseId});
@@ -15,6 +20,8 @@ class CourseDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final courseAsync = ref.watch(courseProvider(courseId));
     final modulesAsync = ref.watch(courseModulesProvider(courseId));
+    final walletAsync = ref.watch(gamificationProvider);
+    final s = S.of(context);
 
     return AsyncValueContent(
       value: courseAsync,
@@ -38,8 +45,14 @@ class CourseDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 actions: [
-                  IconButton(icon: const Icon(Icons.favorite_border), onPressed: () {}),
-                  IconButton(icon: const Icon(Icons.share_outlined), onPressed: () {}),
+                  walletAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (w) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Center(child: CoinBadge(amount: w.coins)),
+                    ),
+                  ),
                 ],
               ),
               SliverToBoxAdapter(
@@ -66,15 +79,65 @@ class CourseDetailScreen extends ConsumerWidget {
                           _InfoChip(course.priceLabel),
                         ],
                       ),
+                      if (course.progressPercent != null) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: (course.progressPercent! / 100).clamp(0.0, 1.0),
+                                  minHeight: 8,
+                                  backgroundColor: AppColors.surfaceVariant,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${course.progressPercent!.round()}%',
+                              style: const TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 20),
                       Text(course.description, style: const TextStyle(height: 1.6)),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.pastelMint,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.monetization_on_rounded, color: AppColors.coin, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                s.lessonRewardHint,
+                                style: const TextStyle(fontSize: 12, height: 1.35),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       const Text('Curriculum', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                       const SizedBox(height: 12),
                       AsyncValueContent(
                         value: modulesAsync,
                         builder: (modules) => Column(
-                          children: modules.map((m) => _ModuleSection(module: m)).toList(),
+                          children: modules
+                              .map(
+                                (m) => _ModuleSection(
+                                  module: m,
+                                  courseId: courseId,
+                                ),
+                              )
+                              .toList(),
                         ),
                       ),
                       const SizedBox(height: 100),
@@ -88,10 +151,12 @@ class CourseDetailScreen extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: SmoothButton(
-                label: course.isFree ? 'Enroll — Free' : 'Buy ${course.priceLabel}',
+                label: course.isFree ? s.enrollFree : '${s.buy} ${course.priceLabel}',
                 onPressed: () async {
                   final userId = ref.read(authProvider).user?.id;
-                  if (userId != null) {
+                  if (userId == null) return;
+
+                  if (course.isFree) {
                     await ref.read(databaseProvider).enrollCourse(userId, courseId);
                     ref.invalidate(coursesProvider);
                     ref.invalidate(courseProvider(courseId));
@@ -100,7 +165,19 @@ class CourseDetailScreen extends ConsumerWidget {
                         const SnackBar(content: Text('Enrolled successfully!')),
                       );
                     }
+                    return;
                   }
+
+                  context.push(
+                    '/checkout',
+                    extra: PaymentCheckoutArgs(
+                      title: course.title,
+                      subtitle: course.teacherName,
+                      amountCentimes: course.priceCents ?? 0,
+                      purpose: PaymentPurpose.course,
+                      itemId: courseId,
+                    ),
+                  );
                 },
               ),
             ),
@@ -125,30 +202,72 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _ModuleSection extends StatelessWidget {
-  const _ModuleSection({required this.module});
+class _ModuleSection extends ConsumerWidget {
+  const _ModuleSection({required this.module, required this.courseId});
 
-  final dynamic module;
+  final CourseModule module;
+  final String courseId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(module.title as String, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(module.title, style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          ...(module.lessons as List).map((l) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  (l.completed as bool) ? Icons.check_circle : Icons.play_circle_outline,
-                  color: (l.completed as bool) ? AppColors.success : AppColors.textMuted,
-                  size: 22,
+          ...module.lessons.map((l) {
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                l.completed ? Icons.check_circle : Icons.play_circle_outline,
+                color: l.completed ? AppColors.success : AppColors.textMuted,
+                size: 22,
+              ),
+              title: Text(l.title, style: const TextStyle(fontSize: 14)),
+              subtitle: Text(
+                l.completed ? s.lessonDone : s.completeLesson,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: l.completed ? AppColors.success : AppColors.primary,
+                  fontWeight: FontWeight.w600,
                 ),
-                title: Text(l.title as String, style: const TextStyle(fontSize: 14)),
-                trailing: Text('${l.durationMinutes}m', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-              )),
+              ),
+              trailing: Text('${l.durationMinutes}m', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              onTap: l.completed
+                  ? null
+                  : () async {
+                      final userId = ref.read(authProvider).user?.id;
+                      if (userId == null) return;
+                      final result = await ref.read(databaseProvider).completeLesson(
+                            userId: userId,
+                            courseId: courseId,
+                            lessonId: l.id,
+                          );
+                      ref.invalidate(courseModulesProvider(courseId));
+                      ref.invalidate(courseProvider(courseId));
+                      ref.invalidate(coursesProvider);
+                      ref.invalidate(gamificationProvider);
+                      if (!context.mounted) return;
+                      if (result.alreadyDone) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result.message ?? s.lessonDone)),
+                        );
+                        return;
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '${result.message ?? s.lessonDone}  ${s.rewardSnack(result.coins, result.xp)}',
+                          ),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    },
+            );
+          }),
         ],
       ),
     );

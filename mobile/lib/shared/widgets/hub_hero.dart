@@ -30,7 +30,7 @@ class HubHeroShell extends StatelessWidget {
     required this.heroTitle,
     required this.heroSubtitle,
     required this.coverUrl,
-    required this.navItems,
+    this.navItems = const [],
     required this.primaryCta,
     required this.secondaryCta,
     this.greeting,
@@ -63,15 +63,7 @@ class HubHeroShell extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.gradientPrimary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.waves, color: Colors.white, size: 18),
-                    ),
+                    const SmoothBrandMark(),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -90,23 +82,26 @@ class HubHeroShell extends StatelessWidget {
                     if (trailing != null) trailing!,
                   ],
                 ).animate().fadeIn(duration: 400.ms),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 34,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: navItems
-                        .map(
-                          (n) => HubNavChip(
-                            label: n.label,
-                            active: n.active,
-                            onTap: n.onTap,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ).animate().fadeIn(delay: 80.ms),
-                const SizedBox(height: 16),
+                if (navItems.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: navItems
+                          .map(
+                            (n) => HubNavChip(
+                              label: n.label,
+                              active: n.active,
+                              onTap: n.onTap,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ).animate().fadeIn(delay: 80.ms),
+                  const SizedBox(height: 16),
+                ] else
+                  const SizedBox(height: 16),
                 NetworkCover(
                   url: coverUrl,
                   height: coverHeight,

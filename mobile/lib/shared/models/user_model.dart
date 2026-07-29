@@ -1,19 +1,27 @@
 enum UserRole { learner, teacher, client, admin }
 
+enum UserAccountStatus { active, blocked }
+
 class AppUser {
   const AppUser({
     required this.id,
     required this.email,
     required this.displayName,
     required this.role,
+    this.status = UserAccountStatus.active,
     this.avatarUrl,
+    this.bio,
   });
 
   final String id;
   final String email;
   final String displayName;
   final UserRole role;
+  final UserAccountStatus status;
   final String? avatarUrl;
+  final String? bio;
+
+  bool get isBlocked => status == UserAccountStatus.blocked;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
@@ -21,7 +29,9 @@ class AppUser {
       email: json['email'] as String,
       displayName: json['displayName'] as String,
       role: _parseRole(json['role'] as String?),
+      status: _parseStatus(json['status'] as String?),
       avatarUrl: json['avatarUrl'] as String?,
+      bio: json['bio'] as String?,
     );
   }
 
@@ -38,6 +48,15 @@ class AppUser {
     }
   }
 
+  static UserAccountStatus _parseStatus(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'blocked':
+        return UserAccountStatus.blocked;
+      default:
+        return UserAccountStatus.active;
+    }
+  }
+
   String get roleLabel {
     switch (role) {
       case UserRole.learner:
@@ -49,6 +68,22 @@ class AppUser {
       case UserRole.admin:
         return 'ADMIN';
     }
+  }
+
+  AppUser copyWith({
+    String? displayName,
+    UserAccountStatus? status,
+    String? bio,
+  }) {
+    return AppUser(
+      id: id,
+      email: email,
+      displayName: displayName ?? this.displayName,
+      role: role,
+      status: status ?? this.status,
+      avatarUrl: avatarUrl,
+      bio: bio ?? this.bio,
+    );
   }
 }
 

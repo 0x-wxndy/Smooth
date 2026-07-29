@@ -168,7 +168,7 @@ class _EdahabiaGatewayScreenState extends State<EdahabiaGatewayScreen> {
                       children: [
                         Text(s.merchant, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                         const SizedBox(height: 4),
-                        const Text('Smooth Hub', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                        const Text('Samooth Hub', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                         const SizedBox(height: 12),
                         Text(args.title, textAlign: TextAlign.center),
                         const SizedBox(height: 12),

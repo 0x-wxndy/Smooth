@@ -44,6 +44,7 @@ class AuthRepository {
     }
     final user = await _db.findUserByEmail(email);
     if (user == null) throw Exception('User not found');
+    if (user.isBlocked) throw Exception('This account is blocked. Contact the hub admin.');
 
     return AuthSession(
       accessToken: 'local_${user.id}',

@@ -1,11 +1,11 @@
 {
-    "name": "smooth_app",
-    "short_name": "smooth_app",
+    "name": "Samooth",
+    "short_name": "Samooth",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
+    "background_color": "#00000000",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Samooth — learning & freelance ecosystem.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

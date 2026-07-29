@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
@@ -20,23 +21,46 @@ class AiChatScreen extends ConsumerStatefulWidget {
 
 class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _controller = TextEditingController();
-  final _messages = <ChatMessage>[
-    ChatMessage(
-      content: 'Hi! I can help you pick a learning path, explain concepts, or suggest what to study next.',
-      isUser: false,
-      timestamp: DateTime.now(),
-    ),
-  ];
+  final _scrollController = ScrollController();
+  final _messages = <ChatMessage>[];
+  bool _welcomeReady = false;
+  bool _isThinking = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _ensureWelcome() {
+    if (_welcomeReady) return;
+    final s = S.of(context);
+    final name = ref.read(authProvider).user?.displayName;
+    _messages.add(
+      ChatMessage(
+        content: name != null ? s.aiWelcome(name.split(' ').first) : s.aiWelcomeGuest,
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    );
+    _welcomeReady = true;
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   Future<void> _send([String? preset]) async {
     final text = preset ?? _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isThinking) return;
 
     final userId = ref.read(authProvider).user?.id;
     if (userId == null) return;
@@ -55,9 +79,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     setState(() {
       _messages.add(ChatMessage(content: text, isUser: true, timestamp: DateTime.now()));
       _controller.clear();
+      _isThinking = true;
     });
+    _scrollToBottom();
 
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() {
       _messages.add(
@@ -67,7 +93,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           timestamp: DateTime.now(),
         ),
       );
+      _isThinking = false;
     });
+    _scrollToBottom();
   }
 
   void _showOutOfTokens() {
@@ -146,28 +174,48 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   String _mockReply(String input) {
+    final s = S.of(context);
     final lower = input.toLowerCase();
-    if (lower.contains('mobile') || lower.contains('flutter')) {
-      return 'Start with Dart fundamentals, then build a small Flutter app with navigation and state management. Aim for 30 minutes daily.';
+    if (lower.contains('plan') || lower.contains('étude') || lower.contains('study')) {
+      return s.aiReplyStudyPlan;
     }
-    if (lower.contains('design')) {
-      return 'Focus on typography and layout first. Redesign one app screen per day in Figma to build muscle memory.';
+    if (lower.contains('quiz') || lower.contains('question')) {
+      return s.aiReplyQuiz;
     }
-    if (lower.contains('coin') || lower.contains('game')) {
-      return 'Play Edu Games from Learn (60%+ once/day) or complete lessons for coins. Spend coins to unlock AI token packs.';
+    if (lower.contains('mobile') || lower.contains('flutter') || lower.contains('dart')) {
+      return s.aiReplyFlutter;
     }
-    return 'Based on your goals, I recommend picking one skill area and completing a beginner course this week. Want a structured 7-day plan?';
+    if (lower.contains('design') || lower.contains('figma') || lower.contains('ui')) {
+      return s.aiReplyDesign;
+    }
+    if (lower.contains('coin') || lower.contains('game') || lower.contains('pièce') || lower.contains('jeton') || lower.contains('token')) {
+      return s.aiReplyCoins;
+    }
+    if (lower.contains('career') || lower.contains('carrière') || lower.contains('job') || lower.contains('portfolio') || lower.contains('recruit')) {
+      return s.aiReplyCareer;
+    }
+    return s.aiReplyDefault;
   }
 
   @override
   Widget build(BuildContext context) {
+    _ensureWelcome();
     final quotaAsync = ref.watch(aiQuotaProvider);
     final walletAsync = ref.watch(gamificationProvider);
     final s = S.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(s.aiAssistant),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(s.aiAssistant),
+            Text(
+              s.aiAssistantName,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white70),
+            ),
+          ],
+        ),
         actions: [
           walletAsync.when(
             loading: () => const SizedBox.shrink(),
@@ -219,7 +267,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, size: 16, color: AppColors.accentPurple),
+                      const Icon(Icons.auto_awesome, size: 16, color: AppColors.accentPurple),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -242,41 +290,83 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (_, i) => _Bubble(message: _messages[i]),
+            child: ColoredBox(
+              color: const Color(0xFFF0F2F5),
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                itemCount: _messages.length + (_isThinking ? 1 : 0),
+                itemBuilder: (_, i) {
+                  if (i == _messages.length) {
+                    return _TypingBubble(label: s.aiTyping);
+                  }
+                  return _Bubble(message: _messages[i], assistantName: s.aiAssistantName);
+                },
+              ),
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _QuickChip('Study plan', () => _send('Create a study plan for me')),
-                _QuickChip('Quiz me', () => _send('Generate a quick quiz')),
-                _QuickChip('Earn coins?', () => _send('How do I earn coins and AI tokens?')),
-              ],
+          if (!_isThinking && _messages.length <= 2)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  _QuickChip(s.aiChipStudyPlan, () => _send(s.aiPromptStudyPlan)),
+                  _QuickChip(s.aiChipQuiz, () => _send(s.aiPromptQuiz)),
+                  _QuickChip(s.aiChipCoins, () => _send(s.aiPromptCoins)),
+                  _QuickChip(s.aiChipFlutter, () => _send(s.aiChipFlutter)),
+                  _QuickChip(s.aiChipCareer, () => _send(s.aiChipCareer)),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Type a message…',
-                      border: OutlineInputBorder(),
+          Material(
+            elevation: 8,
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        enabled: !_isThinking,
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _send(),
+                        decoration: InputDecoration(
+                          hintText: s.aiInputHint,
+                          filled: true,
+                          fillColor: AppColors.surfaceVariant,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
                     ),
-                    onSubmitted: (_) => _send(),
-                  ),
+                    const SizedBox(width: 6),
+                    IconButton.filled(
+                      onPressed: _isThinking ? null : () => _send(),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.accentPurple,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: _isThinking
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.send_rounded),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(onPressed: () => _send(), icon: const Icon(Icons.send)),
-              ],
+              ),
             ),
           ),
         ],
@@ -286,32 +376,149 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message});
+  const _Bubble({required this.message, required this.assistantName});
 
   final ChatMessage message;
+  final String assistantName;
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
-        decoration: BoxDecoration(
-          color: isUser ? AppColors.primary : AppColors.surfaceVariant,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isUser ? 16 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 16),
+    final time = DateFormat.Hm().format(message.timestamp.toLocal());
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isUser) ...[
+            const CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.pastelLavender,
+              child: Icon(Icons.auto_awesome, size: 14, color: AppColors.accentPurple),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              decoration: BoxDecoration(
+                color: isUser ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                ),
+                boxShadow: isUser
+                    ? null
+                    : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!isUser)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        assistantName,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.accentPurple),
+                      ),
+                    ),
+                  Text(
+                    message.content,
+                    style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary, height: 1.45),
+                  ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      time,
+                      style: TextStyle(fontSize: 10, color: isUser ? Colors.white70 : AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        child: Text(
-          message.content,
-          style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary, height: 1.4),
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingBubble extends StatefulWidget {
+  const _TypingBubble({required this.label});
+
+  final String label;
+
+  @override
+  State<_TypingBubble> createState() => _TypingBubbleState();
+}
+
+class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderStateMixin {
+  late final AnimationController _dots;
+
+  @override
+  void initState() {
+    super.initState();
+    _dots = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _dots.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 14,
+            backgroundColor: AppColors.pastelLavender,
+            child: Icon(Icons.auto_awesome, size: 14, color: AppColors.accentPurple),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(widget.label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(width: 8),
+                AnimatedBuilder(
+                  animation: _dots,
+                  builder: (_, __) {
+                    return Row(
+                      children: List.generate(3, (i) {
+                        final active = (_dots.value * 3).floor() == i;
+                        return Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            color: active ? AppColors.accentPurple : AppColors.surfaceVariant,
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      }),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -327,7 +534,13 @@ class _QuickChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: ActionChip(label: Text(label), onPressed: onTap),
+      child: ActionChip(
+        label: Text(label),
+        backgroundColor: Colors.white,
+        side: BorderSide(color: AppColors.accentPurple.withValues(alpha: 0.35)),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accentPurple),
+        onPressed: onTap,
+      ),
     );
   }
 }

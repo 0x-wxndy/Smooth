@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="smooth_app"
+        android:label="Samooth"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

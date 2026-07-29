@@ -64,15 +64,7 @@ class WelcomeScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.gradientPrimary,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.waves, color: Colors.white, size: 22),
-                          ),
+                          const SmoothBrandMark(size: 40, borderRadius: 12),
                           const SizedBox(width: 10),
                           Text(
                             s.appName,
@@ -169,6 +161,19 @@ class WelcomeScreen extends ConsumerWidget {
                   onLogin: () => _demoLogin(ref, context, AppConfig.demoClientEmail),
                   onRegister: () => context.push('/register?role=${UserRole.client.name}'),
                 ).animate().fadeIn(delay: 420.ms).slideY(begin: 0.08),
+                const SizedBox(height: 12),
+                _DemoRoleCard(
+                  accent: AppColors.navy,
+                  icon: Icons.admin_panel_settings_rounded,
+                  title: s.adminRole,
+                  badge: s.demoAdminLabel,
+                  description: s.adminDesc,
+                  email: AppConfig.demoAdminEmail,
+                  cta: s.openAdminPanel,
+                  loading: auth.isLoading,
+                  onLogin: () => _demoLogin(ref, context, AppConfig.demoAdminEmail),
+                  onRegister: () => context.push('/login'),
+                ).animate().fadeIn(delay: 480.ms).slideY(begin: 0.08),
                 if (auth.error != null) ...[
                   const SizedBox(height: 12),
                   Text(auth.error!, style: const TextStyle(color: AppColors.error, fontSize: 13)),

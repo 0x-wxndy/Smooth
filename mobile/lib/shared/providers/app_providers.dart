@@ -5,6 +5,7 @@ import '../../core/config/app_config.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/marketplace_model.dart';
+import '../models/hub_admin_model.dart';
 import '../services/auth_repository.dart';
 import 'database_provider.dart';
 
@@ -177,6 +178,32 @@ final serviceProvider = FutureProvider.family<FreelanceService?, String>((ref, i
   return ref.watch(databaseProvider).getService(id);
 });
 
+final featuredProvidersProvider = FutureProvider<List<FeaturedProvider>>((ref) async {
+  return ref.watch(databaseProvider).getFeaturedProviders();
+});
+
+final learnProvidersProvider = FutureProvider<List<FeaturedProvider>>((ref) async {
+  return ref.watch(databaseProvider).getLearnProviders();
+});
+
+final providerStatsProvider =
+    FutureProvider.family<({double ratingAvg, int reviewCount}), String>((ref, userId) async {
+  final db = ref.watch(databaseProvider);
+  final services = await db.getServicesByProvider(userId);
+  if (services.isNotEmpty) {
+    final rating = services.map((s) => s.ratingAvg).reduce((a, b) => a + b) / services.length;
+    final reviews = services.map((s) => s.reviewCount).reduce((a, b) => a + b);
+    return (ratingAvg: rating, reviewCount: reviews);
+  }
+  final courses = await db.getCoursesByTeacher(userId);
+  if (courses.isNotEmpty) {
+    final rating = courses.map((c) => c.ratingAvg).reduce((a, b) => a + b) / courses.length;
+    final reviews = courses.fold<int>(0, (sum, c) => sum + (c.enrollmentCount ~/ 3).clamp(8, 120));
+    return (ratingAvg: rating, reviewCount: reviews);
+  }
+  return (ratingAvg: 4.8, reviewCount: 12);
+});
+
 final jobsProvider = FutureProvider.family<List<JobPosting>, bool?>((ref, remoteOnly) async {
   return ref.watch(databaseProvider).getJobs(remoteOnly: remoteOnly);
 });
@@ -195,6 +222,18 @@ final myServicesProvider = FutureProvider<List<FreelanceService>>((ref) async {
   final user = ref.watch(authProvider).user;
   if (user == null) return [];
   return ref.watch(databaseProvider).getServicesByProvider(user.id);
+});
+
+final enrolledCoursesProvider = FutureProvider<List<Course>>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null) return [];
+  return ref.watch(databaseProvider).getEnrolledCourses(user.id);
+});
+
+final bookedServicesProvider = FutureProvider<List<FreelanceService>>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null) return [];
+  return ref.watch(databaseProvider).getBookedServicesForClient(user.id);
 });
 
 final searchProvider = FutureProvider.family<
@@ -216,4 +255,46 @@ final aiQuotaProvider = FutureProvider<AiQuota>((ref) async {
     return const AiQuota(freeUsed: 0, freeLimit: AppConfig.aiDailyLimit, bank: 0);
   }
   return ref.watch(databaseProvider).getAiQuota(userId);
+});
+
+final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
+  return ref.watch(databaseProvider).getAdminStats();
+});
+
+final allUsersProvider = FutureProvider<List<AppUser>>((ref) async {
+  return ref.watch(databaseProvider).getAllUsers();
+});
+
+final reportsProvider = FutureProvider<List<UserReport>>((ref) async {
+  return ref.watch(databaseProvider).getReports();
+});
+
+final contactMessagesProvider = FutureProvider<List<ContactMessage>>((ref) async {
+  return ref.watch(databaseProvider).getContactMessages();
+});
+
+final userMessagesProvider = FutureProvider<List<ContactMessage>>((ref) async {
+  final userId = ref.watch(authProvider).user?.id;
+  if (userId == null) return [];
+  return ref.watch(databaseProvider).getUserMessages(userId);
+});
+
+final roomsProvider = FutureProvider<List<HubRoom>>((ref) async {
+  return ref.watch(databaseProvider).getRooms();
+});
+
+final roomBookingsProvider = FutureProvider<List<RoomBooking>>((ref) async {
+  return ref.watch(databaseProvider).getRoomBookings();
+});
+
+final printServicesProvider = FutureProvider<List<PrintServiceItem>>((ref) async {
+  return ref.watch(databaseProvider).getPrintServices();
+});
+
+final printOrdersProvider = FutureProvider<List<PrintOrder>>((ref) async {
+  return ref.watch(databaseProvider).getPrintOrders();
+});
+
+final serviceBookingsProvider = FutureProvider<List<ServiceBookingRecord>>((ref) async {
+  return ref.watch(databaseProvider).getServiceBookings();
 });

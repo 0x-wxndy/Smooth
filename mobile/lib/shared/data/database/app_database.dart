@@ -1,9 +1,12 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/theme/lesson_videos.dart';
 import '../../models/course_model.dart';
 import '../../models/marketplace_model.dart';
+import '../../models/hub_admin_model.dart';
 import '../../models/user_model.dart';
+import '../../models/publication_model.dart';
 import 'database_schema.dart';
 import 'database_seeder.dart';
 
@@ -39,7 +42,15 @@ class AppDatabase {
           'educational_games',
           'job_applications',
           'job_postings',
+          'service_bookings',
           'services',
+          'room_bookings',
+          'hub_rooms',
+          'print_orders',
+          'print_services',
+          'user_reports',
+          'contact_messages',
+          'publications',
           'courses',
           'gamification_wallets',
           'refresh_tokens',
@@ -99,6 +110,7 @@ class AppDatabase {
       'password_hash': passwordHash,
       'display_name': displayName,
       'role': _roleToDb(role),
+      'status': 'active',
       'created_at': now,
     });
     await db.insert('gamification_wallets', {
@@ -108,7 +120,7 @@ class AppDatabase {
       'level': 1,
       'ai_token_bank': 3,
     });
-    return AppUser(id: id, email: email, displayName: displayName, role: role);
+    return AppUser(id: id, email: email, displayName: displayName, role: role, status: UserAccountStatus.active);
   }
 
   Future<bool> verifyPassword(String email, String password) async {
@@ -403,12 +415,17 @@ class AppDatabase {
         id: mod['id'] as String,
         title: mod['title'] as String,
         lessons: lessonRows
-            .map((l) => Lesson(
-                  id: l['id'] as String,
-                  title: l['title'] as String,
-                  durationMinutes: l['duration_minutes'] as int,
-                  completed: completedLessons[l['id'] as String] ?? false,
-                ))
+            .map((l) {
+              final id = l['id'] as String;
+              final storedVideo = l['video_path'] as String?;
+              return Lesson(
+                id: id,
+                title: l['title'] as String,
+                durationMinutes: l['duration_minutes'] as int,
+                completed: completedLessons[id] ?? false,
+                videoAsset: storedVideo ?? LessonVideos.assetFor(id),
+              );
+            })
             .toList(),
       ));
     }
@@ -432,6 +449,8 @@ class AppDatabase {
     required bool isFree,
     int? priceCents,
     int durationMinutes = 60,
+    String? thumbnailUrl,
+    String? introVideoPath,
   }) async {
     final id = 'course_${DateTime.now().millisecondsSinceEpoch}';
     await db.insert('courses', {
@@ -445,6 +464,7 @@ class AppDatabase {
       'skills': category.name,
       'is_free': isFree ? 1 : 0,
       'price_cents': isFree ? null : (priceCents ?? 0),
+      'thumbnail_url': thumbnailUrl,
       'rating_avg': 5.0,
       'enrollment_count': 0,
     });
@@ -462,6 +482,7 @@ class AppDatabase {
       'title': 'Introduction',
       'duration_minutes': 15,
       'sort_order': 0,
+      'video_path': introVideoPath,
     });
 
     await awardRewards(
@@ -483,6 +504,31 @@ class AppDatabase {
       ORDER BY c.title ASC
     ''', [teacherId]);
     return rows.map((r) => _mapCourse(r)).toList();
+  }
+
+  Future<List<Course>> getEnrolledCourses(String userId) async {
+    final rows = await db.rawQuery('''
+      SELECT c.*, u.display_name AS teacher_name, e.progress_percent
+      FROM enrollments e
+      JOIN courses c ON c.id = e.course_id
+      JOIN users u ON u.id = c.teacher_id
+      WHERE e.user_id = ?
+      ORDER BY e.progress_percent DESC, c.title ASC
+    ''', [userId]);
+    return rows.map((r) => _mapCourse(r, r['progress_percent'] as double?)).toList();
+  }
+
+  Future<List<FreelanceService>> getBookedServicesForClient(String clientId) async {
+    final rows = await db.rawQuery('''
+      SELECT s.*, u.display_name AS provider_name
+      FROM services s
+      JOIN users u ON u.id = s.provider_id
+      WHERE s.id IN (
+        SELECT service_id FROM service_bookings WHERE client_id = ?
+      )
+      ORDER BY s.title ASC
+    ''', [clientId]);
+    return rows.map(_mapService).toList();
   }
 
   Future<FreelanceService> createService({
@@ -552,18 +598,539 @@ class AppDatabase {
     );
   }
 
-  Future<void> awardBookingToProvider(String serviceId) async {
+  Future<void> awardBookingToProvider(String serviceId, {String? clientId}) async {
     final rows = await db.query('services', where: 'id = ?', whereArgs: [serviceId], limit: 1);
     if (rows.isEmpty) return;
     final providerId = rows.first['provider_id'] as String;
+    final price = rows.first['price_cents'] as int;
     await awardRewards(
       providerId,
       coins: AppConfig.bookingReceivedCoins,
       xp: AppConfig.bookingReceivedXp,
     );
+    if (clientId != null) {
+      await db.insert('service_bookings', {
+        'id': 'sb_${DateTime.now().millisecondsSinceEpoch}',
+        'service_id': serviceId,
+        'client_id': clientId,
+        'provider_id': providerId,
+        'total_cents': price,
+        'status': 'confirmed',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    }
   }
 
-  // ── Marketplace ───────────────────────────────────────────────────
+  // ── Hub facilities (rooms + print) ────────────────────────────────
+
+  Future<List<HubRoom>> getRooms({bool availableOnly = false}) async {
+    final rows = await db.query(
+      'hub_rooms',
+      where: availableOnly ? 'available = 1' : null,
+      orderBy: 'name ASC',
+    );
+    return rows.map(_mapRoom).toList();
+  }
+
+  Future<HubRoom?> getRoom(String id) async {
+    final rows = await db.query('hub_rooms', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return null;
+    return _mapRoom(rows.first);
+  }
+
+  Future<void> setRoomAvailability(String roomId, bool available) async {
+    await db.update(
+      'hub_rooms',
+      {'available': available ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [roomId],
+    );
+  }
+
+  Future<RoomBooking> bookRoom({
+    required String roomId,
+    required String userId,
+    required String billing,
+    required DateTime startAt,
+    required DateTime endAt,
+    int hours = 2,
+  }) async {
+    final room = await getRoom(roomId);
+    if (room == null) throw StateError('Room not found');
+    final total = billing == 'day'
+        ? room.priceDayCents
+        : room.priceHourCents * endAt.difference(startAt).inHours.clamp(1, 24);
+    final id = 'rb_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('room_bookings', {
+      'id': id,
+      'room_id': roomId,
+      'user_id': userId,
+      'start_at': startAt.toIso8601String(),
+      'end_at': endAt.toIso8601String(),
+      'billing': billing,
+      'total_cents': total,
+      'status': 'confirmed',
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    return RoomBooking(
+      id: id,
+      roomId: roomId,
+      userId: userId,
+      startAt: startAt.toIso8601String(),
+      endAt: endAt.toIso8601String(),
+      billing: billing,
+      totalCents: total,
+      status: 'confirmed',
+      createdAt: DateTime.now().toUtc().toIso8601String(),
+      roomName: room.name,
+    );
+  }
+
+  Future<List<RoomBooking>> getRoomBookings() async {
+    final rows = await db.rawQuery('''
+      SELECT b.*, r.name AS room_name, u.display_name AS user_name
+      FROM room_bookings b
+      JOIN hub_rooms r ON r.id = b.room_id
+      JOIN users u ON u.id = b.user_id
+      ORDER BY b.created_at DESC
+    ''');
+    return rows.map(_mapRoomBooking).toList();
+  }
+
+  Future<List<PrintServiceItem>> getPrintServices({bool activeOnly = true}) async {
+    final rows = await db.query(
+      'print_services',
+      where: activeOnly ? 'active = 1' : null,
+      orderBy: 'title ASC',
+    );
+    return rows.map(_mapPrintService).toList();
+  }
+
+  Future<PrintOrder> createPrintOrder({
+    required String serviceId,
+    required String userId,
+    required int quantity,
+    String? notes,
+    DateTime? scheduledAt,
+  }) async {
+    final rows = await db.query('print_services', where: 'id = ?', whereArgs: [serviceId], limit: 1);
+    if (rows.isEmpty) throw StateError('Print service not found');
+    final price = rows.first['price_cents'] as int;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final id = 'po_${DateTime.now().millisecondsSinceEpoch}';
+    final total = price * quantity;
+    await db.insert('print_orders', {
+      'id': id,
+      'service_id': serviceId,
+      'user_id': userId,
+      'quantity': quantity,
+      'notes': notes,
+      'scheduled_at': scheduledAt?.toIso8601String(),
+      'total_cents': total,
+      'status': 'pending',
+      'created_at': now,
+    });
+    return PrintOrder(
+      id: id,
+      serviceId: serviceId,
+      userId: userId,
+      quantity: quantity,
+      notes: notes,
+      totalCents: total,
+      status: 'pending',
+      createdAt: now,
+      serviceTitle: rows.first['title'] as String,
+    );
+  }
+
+  Future<List<PrintOrder>> getPrintOrders() async {
+    final rows = await db.rawQuery('''
+      SELECT o.*, p.title AS service_title, u.display_name AS user_name
+      FROM print_orders o
+      JOIN print_services p ON p.id = o.service_id
+      JOIN users u ON u.id = o.user_id
+      ORDER BY o.created_at DESC
+    ''');
+    return rows.map(_mapPrintOrder).toList();
+  }
+
+  Future<void> updatePrintOrderStatus(String id, String status) async {
+    await db.update('print_orders', {'status': status}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ── Reports & contact ─────────────────────────────────────────────
+
+  Future<UserReport> createReport({
+    required String reporterId,
+    required String reportedUserId,
+    required String reason,
+    String? details,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final id = 'rep_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('user_reports', {
+      'id': id,
+      'reporter_id': reporterId,
+      'reported_user_id': reportedUserId,
+      'reason': reason,
+      'details': details,
+      'status': 'open',
+      'created_at': now,
+    });
+    return UserReport(
+      id: id,
+      reporterId: reporterId,
+      reportedUserId: reportedUserId,
+      reason: reason,
+      details: details,
+      status: 'open',
+      createdAt: now,
+    );
+  }
+
+  Future<List<UserReport>> getReports({String? status}) async {
+    final rows = await db.rawQuery('''
+      SELECT r.*,
+        a.display_name AS reporter_name,
+        b.display_name AS reported_name
+      FROM user_reports r
+      JOIN users a ON a.id = r.reporter_id
+      JOIN users b ON b.id = r.reported_user_id
+      ${status != null ? 'WHERE r.status = ?' : ''}
+      ORDER BY r.created_at DESC
+    ''', status != null ? [status] : []);
+    return rows.map(_mapReport).toList();
+  }
+
+  Future<void> updateReportStatus(String id, String status) async {
+    await db.update('user_reports', {'status': status}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<ContactMessage> createContactMessage({
+    String? userId,
+    required String name,
+    required String email,
+    required String subject,
+    required String body,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final id = 'msg_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('contact_messages', {
+      'id': id,
+      'user_id': userId,
+      'name': name,
+      'email': email,
+      'subject': subject,
+      'body': body,
+      'status': 'new',
+      'created_at': now,
+    });
+    return ContactMessage(
+      id: id,
+      userId: userId,
+      name: name,
+      email: email,
+      subject: subject,
+      body: body,
+      status: 'new',
+      createdAt: now,
+    );
+  }
+
+  Future<List<ContactMessage>> getContactMessages() async {
+    final rows = await db.query('contact_messages', orderBy: 'created_at DESC');
+    return rows
+        .map(
+          (r) => ContactMessage(
+            id: r['id'] as String,
+            userId: r['user_id'] as String?,
+            name: r['name'] as String,
+            email: r['email'] as String,
+            subject: r['subject'] as String,
+            body: r['body'] as String,
+            status: r['status'] as String,
+            createdAt: r['created_at'] as String,
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> markContactRead(String id) async {
+    await db.update('contact_messages', {'status': 'read'}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ── Admin ─────────────────────────────────────────────────────────
+
+  Future<List<AppUser>> getAllUsers() async {
+    final rows = await db.query('users', orderBy: 'created_at DESC');
+    return rows.map(_mapUser).toList();
+  }
+
+  Future<List<AppUser>> searchUsers(String query, {String? excludeUserId}) async {
+    if (query.trim().isEmpty) return [];
+    final q = '%${query.trim().toLowerCase()}%';
+    final rows = await db.query(
+      'users',
+      where: '''
+        (LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?)
+        AND role != 'ADMIN'
+        ${excludeUserId != null ? "AND id != ?" : ''}
+      ''',
+      whereArgs: excludeUserId != null ? [q, q, excludeUserId] : [q, q],
+      orderBy: 'display_name ASC',
+      limit: 25,
+    );
+    return rows.map(_mapUser).toList();
+  }
+
+  Future<List<FeaturedProvider>> getFeaturedProviders({int limit = 6}) async {
+    final rows = await db.rawQuery('''
+      SELECT u.id AS user_id, u.display_name, u.avatar_url,
+             s.category, s.rating_avg, s.price_cents, s.title
+      FROM services s
+      JOIN users u ON u.id = s.provider_id
+      WHERE u.role IN ('TEACHER', 'CLIENT')
+      ORDER BY s.rating_avg DESC, s.review_count DESC
+    ''');
+    final seen = <String>{};
+    final results = <FeaturedProvider>[];
+    for (final row in rows) {
+      final userId = row['user_id'] as String;
+      if (seen.contains(userId)) continue;
+      seen.add(userId);
+      final category = row['category'] as String? ?? 'Freelancer';
+      results.add(
+        FeaturedProvider(
+          userId: userId,
+          displayName: row['display_name'] as String,
+          headline: category,
+          ratingAvg: (row['rating_avg'] as num).toDouble(),
+          priceCents: row['price_cents'] as int,
+          tags: [category, (row['title'] as String).split(' ').first],
+          avatarUrl: row['avatar_url'] as String?,
+        ),
+      );
+      if (results.length >= limit) break;
+    }
+    return results;
+  }
+
+  Future<List<FeaturedProvider>> getLearnProviders({int limit = 10}) async {
+    final results = <FeaturedProvider>[];
+    final seen = <String>{};
+
+    final teacherRows = await db.rawQuery('''
+      SELECT u.id AS user_id, u.display_name, u.avatar_url,
+             MAX(c.rating_avg) AS rating_avg,
+             MIN(c.price_cents) AS price_cents,
+             GROUP_CONCAT(DISTINCT c.category) AS cats
+      FROM users u
+      INNER JOIN courses c ON c.teacher_id = u.id
+      WHERE u.role = 'TEACHER'
+      GROUP BY u.id
+      ORDER BY rating_avg DESC
+    ''');
+    for (final row in teacherRows) {
+      final userId = row['user_id'] as String;
+      seen.add(userId);
+      final cats = (row['cats'] as String?)?.split(',') ?? ['TEACHER'];
+      results.add(
+        FeaturedProvider(
+          userId: userId,
+          displayName: row['display_name'] as String,
+          headline: cats.first,
+          ratingAvg: (row['rating_avg'] as num).toDouble(),
+          priceCents: (row['price_cents'] as int?) ?? 0,
+          tags: cats.take(2).toList(),
+          avatarUrl: row['avatar_url'] as String?,
+        ),
+      );
+    }
+
+    final freelancers = await getFeaturedProviders(limit: limit);
+    for (final p in freelancers) {
+      if (seen.contains(p.userId)) continue;
+      seen.add(p.userId);
+      results.add(p);
+    }
+
+    results.sort((a, b) => b.ratingAvg.compareTo(a.ratingAvg));
+    return results.take(limit).toList();
+  }
+
+  Future<void> updateUserRole(String userId, UserRole role) async {
+    await db.update(
+      'users',
+      {'role': _roleToDb(role)},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<void> setUserBlocked(String userId, bool blocked) async {
+    await db.update(
+      'users',
+      {'status': blocked ? 'blocked' : 'active'},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<void> updateUserProfile({
+    required String userId,
+    String? displayName,
+    String? bio,
+  }) async {
+    final updates = <String, Object?>{};
+    if (displayName != null) updates['display_name'] = displayName;
+    if (bio != null) updates['bio'] = bio;
+    if (updates.isEmpty) return;
+    await db.update('users', updates, where: 'id = ?', whereArgs: [userId]);
+  }
+
+  Future<void> deleteUser(String userId) async {
+    await db.delete('gamification_wallets', where: 'user_id = ?', whereArgs: [userId]);
+    await db.delete('refresh_tokens', where: 'user_id = ?', whereArgs: [userId]);
+    await db.delete('users', where: 'id = ?', whereArgs: [userId]);
+  }
+
+  Future<List<ServiceBookingRecord>> getServiceBookings() async {
+    final rows = await db.rawQuery('''
+      SELECT b.*,
+        s.title AS service_title,
+        c.display_name AS client_name,
+        p.display_name AS provider_name
+      FROM service_bookings b
+      JOIN services s ON s.id = b.service_id
+      JOIN users c ON c.id = b.client_id
+      JOIN users p ON p.id = b.provider_id
+      ORDER BY b.created_at DESC
+    ''');
+    return rows.map(_mapServiceBooking).toList();
+  }
+
+  Future<AdminStats> getAdminStats() async {
+    Future<int> count(String sql, [List<Object?>? args]) async {
+      final r = await db.rawQuery(sql, args);
+      return Sqflite.firstIntValue(r) ?? 0;
+    }
+
+    return AdminStats(
+      learners: await count("SELECT COUNT(*) FROM users WHERE role = 'LEARNER'"),
+      teachers: await count("SELECT COUNT(*) FROM users WHERE role = 'TEACHER'"),
+      clients: await count("SELECT COUNT(*) FROM users WHERE role = 'CLIENT'"),
+      courses: await count('SELECT COUNT(*) FROM courses'),
+      services: await count('SELECT COUNT(*) FROM services'),
+      serviceBookings: await count('SELECT COUNT(*) FROM service_bookings'),
+      roomBookings: await count('SELECT COUNT(*) FROM room_bookings'),
+      printOrders: await count('SELECT COUNT(*) FROM print_orders'),
+      openReports: await count("SELECT COUNT(*) FROM user_reports WHERE status = 'open'"),
+      newMessages: await count("SELECT COUNT(*) FROM contact_messages WHERE status = 'new'"),
+      jobs: await count('SELECT COUNT(*) FROM job_postings'),
+    );
+  }
+
+  Future<void> deleteCourse(String id) async {
+    await db.delete('lessons', where: 'module_id IN (SELECT id FROM course_modules WHERE course_id = ?)', whereArgs: [id]);
+    await db.delete('course_modules', where: 'course_id = ?', whereArgs: [id]);
+    await db.delete('enrollments', where: 'course_id = ?', whereArgs: [id]);
+    await db.delete('courses', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteService(String id) async {
+    await db.delete('services', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ── Mappers (extended) ────────────────────────────────────────────
+
+  HubRoom _mapRoom(Map<String, Object?> row) {
+    final amenities = (row['amenities'] as String? ?? '')
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    return HubRoom(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      description: row['description'] as String,
+      capacity: row['capacity'] as int,
+      priceHourCents: row['price_hour_cents'] as int,
+      priceDayCents: row['price_day_cents'] as int,
+      available: (row['available'] as int) == 1,
+      amenities: amenities,
+    );
+  }
+
+  RoomBooking _mapRoomBooking(Map<String, Object?> row) {
+    return RoomBooking(
+      id: row['id'] as String,
+      roomId: row['room_id'] as String,
+      userId: row['user_id'] as String,
+      startAt: row['start_at'] as String,
+      endAt: row['end_at'] as String,
+      billing: row['billing'] as String,
+      totalCents: row['total_cents'] as int,
+      status: row['status'] as String,
+      createdAt: row['created_at'] as String,
+      roomName: row['room_name'] as String?,
+      userName: row['user_name'] as String?,
+    );
+  }
+
+  PrintServiceItem _mapPrintService(Map<String, Object?> row) {
+    return PrintServiceItem(
+      id: row['id'] as String,
+      title: row['title'] as String,
+      description: row['description'] as String,
+      priceCents: row['price_cents'] as int,
+      unit: row['unit'] as String? ?? 'unit',
+      active: (row['active'] as int?) != 0,
+    );
+  }
+
+  PrintOrder _mapPrintOrder(Map<String, Object?> row) {
+    return PrintOrder(
+      id: row['id'] as String,
+      serviceId: row['service_id'] as String,
+      userId: row['user_id'] as String,
+      quantity: row['quantity'] as int,
+      notes: row['notes'] as String?,
+      totalCents: row['total_cents'] as int,
+      status: row['status'] as String,
+      createdAt: row['created_at'] as String,
+      serviceTitle: row['service_title'] as String?,
+      userName: row['user_name'] as String?,
+    );
+  }
+
+  UserReport _mapReport(Map<String, Object?> row) {
+    return UserReport(
+      id: row['id'] as String,
+      reporterId: row['reporter_id'] as String,
+      reportedUserId: row['reported_user_id'] as String,
+      reason: row['reason'] as String,
+      details: row['details'] as String?,
+      status: row['status'] as String,
+      createdAt: row['created_at'] as String,
+      reporterName: row['reporter_name'] as String?,
+      reportedName: row['reported_name'] as String?,
+    );
+  }
+
+  ServiceBookingRecord _mapServiceBooking(Map<String, Object?> row) {
+    return ServiceBookingRecord(
+      id: row['id'] as String,
+      serviceId: row['service_id'] as String,
+      clientId: row['client_id'] as String,
+      providerId: row['provider_id'] as String,
+      totalCents: row['total_cents'] as int,
+      status: row['status'] as String,
+      createdAt: row['created_at'] as String,
+      serviceTitle: row['service_title'] as String?,
+      clientName: row['client_name'] as String?,
+      providerName: row['provider_name'] as String?,
+    );
+  }
 
   Future<List<FreelanceService>> getServices() async {
     final rows = await db.rawQuery('''
@@ -684,12 +1251,15 @@ class AppDatabase {
   // ── Mappers ───────────────────────────────────────────────────────
 
   AppUser _mapUser(Map<String, Object?> row) {
+    final statusRaw = row['status'] as String? ?? 'active';
     return AppUser(
       id: row['id'] as String,
       email: row['email'] as String,
       displayName: row['display_name'] as String,
       role: _parseRole(row['role'] as String),
+      status: statusRaw == 'blocked' ? UserAccountStatus.blocked : UserAccountStatus.active,
       avatarUrl: row['avatar_url'] as String?,
+      bio: row['bio'] as String?,
     );
   }
 
@@ -704,10 +1274,12 @@ class AppDatabase {
       skills: (row['skills'] as String).split(','),
       isFree: (row['is_free'] as int) == 1,
       priceCents: row['price_cents'] as int?,
+      thumbnailUrl: row['thumbnail_url'] as String?,
       ratingAvg: row['rating_avg'] as double,
       enrollmentCount: row['enrollment_count'] as int,
       progressPercent: progress,
       teacherName: row['teacher_name'] as String?,
+      teacherId: row['teacher_id'] as String?,
     );
   }
 
@@ -721,6 +1293,7 @@ class AppDatabase {
       ratingAvg: row['rating_avg'] as double,
       reviewCount: row['review_count'] as int,
       providerName: row['provider_name'] as String?,
+      providerId: row['provider_id'] as String?,
       category: row['category'] as String?,
     );
   }
@@ -776,6 +1349,130 @@ class AppDatabase {
     return Difficulty.values.firstWhere(
       (d) => d.name == value,
       orElse: () => Difficulty.beginner,
+    );
+  }
+
+  // ── Teacher enrollments ───────────────────────────────────────────
+
+  Future<TeacherEnrollmentStats> getTeacherEnrollmentStats(String teacherId) async {
+    final rows = await db.rawQuery('''
+      SELECT u.id AS user_id, u.display_name, c.id AS course_id, c.title AS course_title,
+             e.progress_percent
+      FROM enrollments e
+      JOIN courses c ON c.id = e.course_id
+      JOIN users u ON u.id = e.user_id
+      WHERE c.teacher_id = ?
+      ORDER BY e.progress_percent DESC, u.display_name ASC
+    ''', [teacherId]);
+    final students = rows
+        .map(
+          (r) => EnrolledStudent(
+            userId: r['user_id'] as String,
+            displayName: r['display_name'] as String,
+            courseId: r['course_id'] as String,
+            courseTitle: r['course_title'] as String,
+            progressPercent: (r['progress_percent'] as num).toDouble(),
+          ),
+        )
+        .toList();
+    final unique = <String>{};
+    for (final s in students) {
+      unique.add(s.userId);
+    }
+    return TeacherEnrollmentStats(totalStudents: unique.length, students: students);
+  }
+
+  Future<List<ContactMessage>> getUserMessages(String userId) async {
+    final rows = await db.query(
+      'contact_messages',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'created_at DESC',
+    );
+    return rows
+        .map(
+          (r) => ContactMessage(
+            id: r['id'] as String,
+            userId: r['user_id'] as String?,
+            name: r['name'] as String,
+            email: r['email'] as String,
+            subject: r['subject'] as String,
+            body: r['body'] as String,
+            status: r['status'] as String,
+            createdAt: r['created_at'] as String,
+          ),
+        )
+        .toList();
+  }
+
+  // ── Publications ──────────────────────────────────────────────────
+
+  Future<List<Publication>> getPublications({String? hashtag, String? authorId}) async {
+    final rows = await db.rawQuery('''
+      SELECT p.*, u.display_name AS author_name
+      FROM publications p
+      JOIN users u ON u.id = p.author_id
+      ORDER BY p.created_at DESC
+    ''');
+    var pubs = rows.map(_mapPublication).toList();
+    if (authorId != null) {
+      pubs = pubs.where((p) => p.authorId == authorId).toList();
+    }
+    if (hashtag != null && hashtag.isNotEmpty) {
+      final tag = hashtag.startsWith('#') ? hashtag.toLowerCase() : '#${hashtag.toLowerCase()}';
+      pubs = pubs.where((p) => p.hashtags.any((h) => h.toLowerCase() == tag)).toList();
+    }
+    return pubs;
+  }
+
+  Future<Publication> createPublication({
+    required String authorId,
+    required String body,
+    List<String> hashtags = const [],
+    List<String> imagePaths = const [],
+    String kind = 'post',
+  }) async {
+    final id = 'pub_${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now().toUtc().toIso8601String();
+    final normalizedTags = hashtags
+        .map((h) => h.trim())
+        .where((h) => h.isNotEmpty)
+        .map((h) => h.startsWith('#') ? h : '#$h')
+        .toList();
+    await db.insert('publications', {
+      'id': id,
+      'author_id': authorId,
+      'body': body.trim(),
+      'hashtags': normalizedTags.join(','),
+      'image_paths': imagePaths.join('|'),
+      'kind': kind,
+      'created_at': now,
+    });
+    final user = await findUserById(authorId);
+    return Publication(
+      id: id,
+      authorId: authorId,
+      authorName: user?.displayName ?? 'User',
+      body: body.trim(),
+      hashtags: normalizedTags,
+      imagePaths: imagePaths,
+      kind: kind,
+      createdAt: now,
+    );
+  }
+
+  Publication _mapPublication(Map<String, Object?> row) {
+    final tagsRaw = row['hashtags'] as String? ?? '';
+    final imgsRaw = row['image_paths'] as String? ?? '';
+    return Publication(
+      id: row['id'] as String,
+      authorId: row['author_id'] as String,
+      authorName: row['author_name'] as String? ?? 'User',
+      body: row['body'] as String,
+      hashtags: tagsRaw.isEmpty ? const [] : tagsRaw.split(','),
+      imagePaths: imgsRaw.isEmpty ? const [] : imgsRaw.split('|'),
+      kind: row['kind'] as String? ?? 'post',
+      createdAt: row['created_at'] as String,
     );
   }
 }

@@ -7,6 +7,9 @@ import '../../../features/payments/payment_models.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/smooth_button.dart';
+import '../../../shared/widgets/provider_name_link.dart';
+import '../../profile/presentation/provider_actions.dart';
+import '../../profile/presentation/provider_profile_screen.dart';
 
 class ServiceDetailScreen extends ConsumerWidget {
   const ServiceDetailScreen({super.key, required this.serviceId});
@@ -35,9 +38,21 @@ class ServiceDetailScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              Text(
-                '${service.providerName} · ★ ${service.ratingAvg} (${service.reviewCount} reviews)',
-                style: const TextStyle(color: AppColors.textSecondary),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (service.providerName != null)
+                    ProviderNameLink(
+                      name: service.providerName!,
+                      providerId: service.providerId,
+                    ),
+                  Text(
+                    '★ ${service.ratingAvg} (${service.reviewCount} reviews)',
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               Text(service.description, style: const TextStyle(height: 1.6)),
@@ -86,37 +101,76 @@ class ServiceDetailScreen extends ConsumerWidget {
           ),
           bottomNavigationBar: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: SmoothButton(
-                      label: 'Request quote',
-                      variant: SmoothButtonVariant.outline,
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Quote request sent (demo)')),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SmoothButton(
-                      label: s.bookNow,
-                      onPressed: () {
-                        context.push(
-                          '/checkout',
-                          extra: PaymentCheckoutArgs(
-                            title: service.title,
-                            subtitle: service.providerName,
-                            amountCentimes: service.priceCents,
-                            purpose: PaymentPurpose.service,
-                            itemId: serviceId,
+                  if (service.providerId != null) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              ref.read(providerProfileProvider(service.providerId!).future).then((user) {
+                                if (user != null && context.mounted) {
+                                  showContactProviderSheet(context: context, ref: ref, provider: user);
+                                }
+                              });
+                            },
+                            icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                            label: Text(s.contactProvider),
                           ),
-                        );
-                      },
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => showLeaveReviewSheet(
+                              context: context,
+                              ref: ref,
+                              providerId: service.providerId!,
+                              providerName: service.providerName ?? 'Provider',
+                              contextLabel: service.title,
+                            ),
+                            icon: const Icon(Icons.rate_review_outlined, size: 18),
+                            label: Text(s.leaveReview),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 10),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SmoothButton(
+                          label: 'Request quote',
+                          variant: SmoothButtonVariant.outline,
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Quote request sent (demo)')),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SmoothButton(
+                          label: s.bookNow,
+                          onPressed: () {
+                            context.push(
+                              '/checkout',
+                              extra: PaymentCheckoutArgs(
+                                title: service.title,
+                                subtitle: service.providerName,
+                                amountCentimes: service.priceCents,
+                                purpose: PaymentPurpose.service,
+                                itemId: serviceId,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

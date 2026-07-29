@@ -8,7 +8,10 @@ import '../../../shared/models/course_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
+import '../../../shared/widgets/provider_name_link.dart';
 import '../../../shared/widgets/smooth_button.dart';
+import '../../profile/presentation/provider_actions.dart';
+import '../../profile/presentation/provider_profile_screen.dart';
 import '../../../shared/widgets/smooth_components.dart';
 
 class CourseDetailScreen extends ConsumerWidget {
@@ -66,9 +69,21 @@ class CourseDetailScreen extends ConsumerWidget {
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        '${course.teacherName ?? 'Instructor'} · ★ ${course.ratingAvg} · ${course.enrollmentCount} students',
-                        style: const TextStyle(color: AppColors.textSecondary),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (course.teacherName != null)
+                            ProviderNameLink(
+                              name: course.teacherName!,
+                              providerId: course.teacherId,
+                            ),
+                          Text(
+                            '★ ${course.ratingAvg} · ${course.enrollmentCount} students',
+                            style: const TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Wrap(
@@ -149,36 +164,76 @@ class CourseDetailScreen extends ConsumerWidget {
           ),
           bottomNavigationBar: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: SmoothButton(
-                label: course.isFree ? s.enrollFree : '${s.buy} ${course.priceLabel}',
-                onPressed: () async {
-                  final userId = ref.read(authProvider).user?.id;
-                  if (userId == null) return;
-
-                  if (course.isFree) {
-                    await ref.read(databaseProvider).enrollCourse(userId, courseId);
-                    ref.invalidate(coursesProvider);
-                    ref.invalidate(courseProvider(courseId));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Enrolled successfully!')),
-                      );
-                    }
-                    return;
-                  }
-
-                  context.push(
-                    '/checkout',
-                    extra: PaymentCheckoutArgs(
-                      title: course.title,
-                      subtitle: course.teacherName,
-                      amountCentimes: course.priceCents ?? 0,
-                      purpose: PaymentPurpose.course,
-                      itemId: courseId,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (course.teacherId != null) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              final teacherId = course.teacherId!;
+                              ref.read(providerProfileProvider(teacherId).future).then((user) {
+                                if (user != null && context.mounted) {
+                                  showContactProviderSheet(context: context, ref: ref, provider: user);
+                                }
+                              });
+                            },
+                            icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                            label: Text(s.contactProvider),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => showLeaveReviewSheet(
+                              context: context,
+                              ref: ref,
+                              providerId: course.teacherId!,
+                              providerName: course.teacherName ?? 'Instructor',
+                              contextLabel: course.title,
+                            ),
+                            icon: const Icon(Icons.rate_review_outlined, size: 18),
+                            label: Text(s.leaveReview),
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                },
+                    const SizedBox(height: 10),
+                  ],
+                  SmoothButton(
+                    label: course.isFree ? s.enrollFree : '${s.buy} ${course.priceLabel}',
+                    onPressed: () async {
+                      final userId = ref.read(authProvider).user?.id;
+                      if (userId == null) return;
+
+                      if (course.isFree) {
+                        await ref.read(databaseProvider).enrollCourse(userId, courseId);
+                        ref.invalidate(coursesProvider);
+                        ref.invalidate(courseProvider(courseId));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Enrolled successfully!')),
+                          );
+                        }
+                        return;
+                      }
+
+                      context.push(
+                        '/checkout',
+                        extra: PaymentCheckoutArgs(
+                          title: course.title,
+                          subtitle: course.teacherName,
+                          amountCentimes: course.priceCents ?? 0,
+                          purpose: PaymentPurpose.course,
+                          itemId: courseId,
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ),
@@ -222,13 +277,23 @@ class _ModuleSection extends ConsumerWidget {
             return ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(
-                l.completed ? Icons.check_circle : Icons.play_circle_outline,
-                color: l.completed ? AppColors.success : AppColors.textMuted,
+                l.completed
+                    ? Icons.check_circle
+                    : l.hasVideo
+                        ? Icons.play_circle_filled_rounded
+                        : Icons.play_circle_outline,
+                color: l.completed
+                    ? AppColors.success
+                    : l.hasVideo
+                        ? AppColors.primary
+                        : AppColors.textMuted,
                 size: 22,
               ),
               title: Text(l.title, style: const TextStyle(fontSize: 14)),
               subtitle: Text(
-                l.completed ? s.lessonDone : s.completeLesson,
+                l.hasVideo
+                    ? (l.completed ? '${s.lessonDone} · Video' : 'Video lesson')
+                    : (l.completed ? s.lessonDone : s.completeLesson),
                 style: TextStyle(
                   fontSize: 11,
                   color: l.completed ? AppColors.success : AppColors.primary,
@@ -236,36 +301,46 @@ class _ModuleSection extends ConsumerWidget {
                 ),
               ),
               trailing: Text('${l.durationMinutes}m', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-              onTap: l.completed
-                  ? null
-                  : () async {
-                      final userId = ref.read(authProvider).user?.id;
-                      if (userId == null) return;
-                      final result = await ref.read(databaseProvider).completeLesson(
-                            userId: userId,
-                            courseId: courseId,
-                            lessonId: l.id,
-                          );
-                      ref.invalidate(courseModulesProvider(courseId));
-                      ref.invalidate(courseProvider(courseId));
-                      ref.invalidate(coursesProvider);
-                      ref.invalidate(gamificationProvider);
-                      if (!context.mounted) return;
-                      if (result.alreadyDone) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(result.message ?? s.lessonDone)),
-                        );
-                        return;
-                      }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '${result.message ?? s.lessonDone}  ${s.rewardSnack(result.coins, result.xp)}',
-                          ),
-                          backgroundColor: AppColors.success,
-                        ),
-                      );
+              onTap: () async {
+                if (l.hasVideo) {
+                  await context.push(
+                    '/courses/$courseId/lessons/${l.id}',
+                    extra: {
+                      'title': l.title,
+                      'videoAsset': l.videoAsset,
+                      'completed': l.completed,
                     },
+                  );
+                  return;
+                }
+                if (l.completed) return;
+                final userId = ref.read(authProvider).user?.id;
+                if (userId == null) return;
+                final result = await ref.read(databaseProvider).completeLesson(
+                      userId: userId,
+                      courseId: courseId,
+                      lessonId: l.id,
+                    );
+                ref.invalidate(courseModulesProvider(courseId));
+                ref.invalidate(courseProvider(courseId));
+                ref.invalidate(coursesProvider);
+                ref.invalidate(gamificationProvider);
+                if (!context.mounted) return;
+                if (result.alreadyDone) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(result.message ?? s.lessonDone)),
+                  );
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '${result.message ?? s.lessonDone}  ${s.rewardSnack(result.coins, result.xp)}',
+                    ),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              },
             );
           }),
         ],

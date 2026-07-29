@@ -18,6 +18,7 @@ abstract final class DatabaseSeeder {
       await _seedServices(txn);
       await _seedJobs(txn);
       await _seedGames(txn);
+      await _seedHubFacilities(txn);
       await txn.insert('app_meta', {'key': 'seeded', 'value': '1'});
     });
   }
@@ -33,6 +34,16 @@ abstract final class DatabaseSeeder {
         'role': 'LEARNER',
         'avatar_url': null,
         'bio': 'Passionate about mobile development and design.',
+        'created_at': now,
+      },
+      {
+        'id': 'user_admin',
+        'email': AppConfig.demoAdminEmail,
+        'password_hash': hashPassword(AppConfig.demoPassword),
+        'display_name': 'Samooth Admin',
+        'role': 'ADMIN',
+        'avatar_url': null,
+        'bio': 'Institution hub manager.',
         'created_at': now,
       },
       {
@@ -143,6 +154,7 @@ abstract final class DatabaseSeeder {
     });
 
     for (final id in [
+      'user_admin',
       'user_teacher_maria',
       'user_teacher_james',
       'user_teacher_sarah',
@@ -184,13 +196,13 @@ abstract final class DatabaseSeeder {
       {
         'id': 'course_1',
         'teacher_id': 'user_teacher_maria',
-        'title': 'Flutter for Beginners',
+        'title': 'Programming Essentials',
         'description':
-            'Build beautiful cross-platform apps from scratch with Flutter and Dart.',
+            'Learn core programming concepts with short offline video lessons — perfect for beginners.',
         'category': 'softwareDev',
         'difficulty': 'beginner',
-        'duration_minutes': 480,
-        'skills': 'Dart,Flutter,Widgets,State',
+        'duration_minutes': 95,
+        'skills': 'Programming,Dart,Fundamentals',
         'is_free': 1,
         'price_cents': null,
         'rating_avg': 4.9,
@@ -316,11 +328,41 @@ abstract final class DatabaseSeeder {
     });
 
     final lessons1 = [
-      {'id': 'lesson_1', 'module_id': 'module_1_1', 'title': 'Intro to Flutter', 'duration_minutes': 12, 'sort_order': 1},
-      {'id': 'lesson_2', 'module_id': 'module_1_1', 'title': 'Setting up your environment', 'duration_minutes': 18, 'sort_order': 2},
-      {'id': 'lesson_3', 'module_id': 'module_1_1', 'title': 'Your first widget tree', 'duration_minutes': 22, 'sort_order': 3},
-      {'id': 'lesson_4', 'module_id': 'module_1_2', 'title': 'setState basics', 'duration_minutes': 15, 'sort_order': 1},
-      {'id': 'lesson_5', 'module_id': 'module_1_2', 'title': 'Riverpod introduction', 'duration_minutes': 28, 'sort_order': 2},
+      {
+        'id': 'lesson_1',
+        'module_id': 'module_1_1',
+        'title': 'Programming Essentials — Part 1',
+        'duration_minutes': 8,
+        'sort_order': 1,
+      },
+      {
+        'id': 'lesson_2',
+        'module_id': 'module_1_1',
+        'title': 'Programming Essentials — Part 2',
+        'duration_minutes': 12,
+        'sort_order': 2,
+      },
+      {
+        'id': 'lesson_3',
+        'module_id': 'module_1_1',
+        'title': 'Programming Essentials — Part 3',
+        'duration_minutes': 15,
+        'sort_order': 3,
+      },
+      {
+        'id': 'lesson_4',
+        'module_id': 'module_1_2',
+        'title': 'Programming Essentials — Part 4',
+        'duration_minutes': 12,
+        'sort_order': 1,
+      },
+      {
+        'id': 'lesson_5',
+        'module_id': 'module_1_2',
+        'title': 'Programming Essentials — Part 5',
+        'duration_minutes': 18,
+        'sort_order': 2,
+      },
     ];
     for (final l in lessons1) {
       await txn.insert('lessons', l);
@@ -513,5 +555,223 @@ abstract final class DatabaseSeeder {
     for (final g in games) {
       await txn.insert('educational_games', g);
     }
+  }
+
+  static Future<void> _seedHubFacilities(Transaction txn) async {
+    final rooms = [
+      {
+        'id': 'room_studio_a',
+        'name': 'Studio A — Formation',
+        'description': 'Salle projetors + tableaux blancs pour formateurs (jusqu’à 20 pers.).',
+        'capacity': 20,
+        'price_hour_cents': 250000, // 2 500 د.ج
+        'price_day_cents': 1500000, // 15 000 د.ج
+        'available': 1,
+        'amenities': 'Projecteur,Wi‑Fi,Climatisation,Tableau',
+      },
+      {
+        'id': 'room_cowork',
+        'name': 'Cowork Lab',
+        'description': 'Espace ouvert pour freelances & mentoring 1:1.',
+        'capacity': 12,
+        'price_hour_cents': 150000,
+        'price_day_cents': 900000,
+        'available': 1,
+        'amenities': 'Wi‑Fi,Prises,Café',
+      },
+      {
+        'id': 'room_meeting',
+        'name': 'Salle Meeting Pro',
+        'description': 'Réunions clients / pitchs — TV 55" et visioconférence.',
+        'capacity': 8,
+        'price_hour_cents': 200000,
+        'price_day_cents': 1200000,
+        'available': 1,
+        'amenities': 'TV,Visio,Wi‑Fi',
+      },
+      {
+        'id': 'room_atelier',
+        'name': 'Atelier Design',
+        'description': 'Espace créatif pour ateliers branding & UI workshops.',
+        'capacity': 15,
+        'price_hour_cents': 220000,
+        'price_day_cents': 1300000,
+        'available': 0,
+        'amenities': 'Écrans,Wi‑Fi,Impression locale',
+      },
+    ];
+    for (final r in rooms) {
+      await txn.insert('hub_rooms', r);
+    }
+
+    final prints = [
+      {
+        'id': 'print_logo',
+        'title': 'Impression logo / identité',
+        'description': 'Impression haute qualité de logos et fichiers vectoriels (A4/A3).',
+        'price_cents': 50000,
+        'unit': 'page',
+        'active': 1,
+      },
+      {
+        'id': 'print_flyers',
+        'title': 'Flyers & supports cours',
+        'description': 'Tirage couleurs pour supports pédagogiques ou promo.',
+        'price_cents': 8000,
+        'unit': 'flyer',
+        'active': 1,
+      },
+      {
+        'id': 'print_banner',
+        'title': 'Bannière / roll-up',
+        'description': 'Impression grand format pour événements hub.',
+        'price_cents': 450000,
+        'unit': 'pièce',
+        'active': 1,
+      },
+      {
+        'id': 'print_cards',
+        'title': 'Cartes de visite formateur',
+        'description': 'Pack 100 cartes — branding freelances Samooth Hub.',
+        'price_cents': 180000,
+        'unit': 'pack',
+        'active': 1,
+      },
+    ];
+    for (final p in prints) {
+      await txn.insert('print_services', p);
+    }
+
+    await txn.insert('room_bookings', {
+      'id': 'rb_seed_1',
+      'room_id': 'room_studio_a',
+      'user_id': 'user_teacher_maria',
+      'start_at': '2026-07-10T09:00:00Z',
+      'end_at': '2026-07-10T12:00:00Z',
+      'billing': 'hour',
+      'total_cents': 750000,
+      'status': 'confirmed',
+      'created_at': '2026-07-09T18:00:00Z',
+    });
+
+    await txn.insert('service_bookings', {
+      'id': 'sb_seed_1',
+      'service_id': 'service_1',
+      'client_id': 'user_client',
+      'provider_id': 'user_teacher_maria',
+      'total_cents': 48000000,
+      'status': 'confirmed',
+      'created_at': '2026-07-08T10:00:00Z',
+    });
+
+    await txn.insert('user_reports', {
+      'id': 'rep_seed_1',
+      'reporter_id': 'user_demo',
+      'reported_user_id': 'user_teacher_alex',
+      'reason': 'Contenu inapproprié',
+      'details': 'Le profil contient des liens suspects.',
+      'status': 'open',
+      'created_at': '2026-07-11T12:00:00Z',
+    });
+
+    await txn.insert('contact_messages', {
+      'id': 'msg_seed_demo',
+      'user_id': 'user_demo',
+      'name': 'Demo Learner',
+      'email': 'demo@smooth.app',
+      'subject': 'Question sur Programming Essentials',
+      'body': 'Bonjour, est-ce que le cours inclut des exercices pratiques après chaque leçon ?',
+      'status': 'read',
+      'created_at': '2026-07-11T11:00:00Z',
+    });
+
+    await txn.insert('contact_messages', {
+      'id': 'msg_seed_1',
+      'user_id': 'user_teacher_maria',
+      'name': 'Maria Chen',
+      'email': 'maria@smooth.app',
+      'subject': 'Disponibilité Studio A',
+      'body': 'Bonjour, puis-je réserver le Studio A tous les mercredis ?',
+      'status': 'new',
+      'created_at': '2026-07-12T09:30:00Z',
+    });
+
+    await txn.insert('contact_messages', {
+      'id': 'msg_seed_2',
+      'user_id': 'user_client_1',
+      'name': 'Karim Boudiaf',
+      'email': 'client@smooth.app',
+      'subject': 'Impression flyers',
+      'body': 'Salut, j’ai besoin de 200 flyers A5 pour la semaine prochaine. C’est possible ?',
+      'status': 'read',
+      'created_at': '2026-07-10T15:20:00Z',
+    });
+
+    final pubs = [
+      {
+        'id': 'pub_seed_demo',
+        'author_id': 'user_demo',
+        'body': 'Just finished module 1 of Programming Essentials — loving the short video format!',
+        'hashtags': '#learning,#flutter,#progress',
+        'image_paths': '',
+        'kind': 'post',
+        'created_at': '2026-07-15T09:00:00Z',
+      },
+      {
+        'id': 'pub_seed_maria',
+        'author_id': 'user_teacher_maria',
+        'body': 'New mentoring slots open this week for Flutter beginners.',
+        'hashtags': '#mentoring,#flutter,#offer',
+        'image_paths': '',
+        'kind': 'offer',
+        'created_at': '2026-07-14T18:00:00Z',
+      },
+      {
+        'id': 'pub_seed_1',
+        'author_id': 'user_teacher_james',
+        'body': 'New UI/UX case study — fintech dashboard redesign with design system tokens.',
+        'hashtags': '#portfolio,#uiux,#design',
+        'image_paths': '',
+        'kind': 'post',
+        'created_at': '2026-07-14T10:00:00Z',
+      },
+      {
+        'id': 'pub_seed_2',
+        'author_id': 'user_teacher_maria',
+        'body': 'Programming Essentials cohort starts Monday — Flutter + Dart fundamentals.',
+        'hashtags': '#course,#flutter,#dev',
+        'image_paths': '',
+        'kind': 'offer',
+        'created_at': '2026-07-13T14:30:00Z',
+      },
+      {
+        'id': 'pub_seed_3',
+        'author_id': 'user_admin',
+        'body': 'Samooth Hub: Studio A & B available for rent. Print services 20% off this week.',
+        'hashtags': '#announcement,#hub',
+        'image_paths': '',
+        'kind': 'announcement',
+        'created_at': '2026-07-12T08:00:00Z',
+      },
+      {
+        'id': 'pub_seed_4',
+        'author_id': 'user_client_1',
+        'body': 'Looking for a freelancer to build a landing page + brand kit for my startup.',
+        'hashtags': '#project,#freelance,#design',
+        'image_paths': '',
+        'kind': 'offer',
+        'created_at': '2026-07-11T16:45:00Z',
+      },
+    ];
+    for (final p in pubs) {
+      await txn.insert('publications', p);
+    }
+
+    await txn.insert('enrollments', {
+      'user_id': 'user_demo',
+      'course_id': 'course_2',
+      'progress_percent': 12,
+      'bookmarked': 0,
+    });
   }
 }

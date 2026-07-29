@@ -14,7 +14,7 @@ class SmoothApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
-      title: 'Smooth Hub',
+      title: 'Samooth Hub',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,

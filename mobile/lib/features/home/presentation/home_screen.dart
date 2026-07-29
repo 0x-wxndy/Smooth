@@ -11,6 +11,7 @@ import '../../../shared/widgets/smooth_components.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/smooth_button.dart';
 import '../../../shared/widgets/hub_hero.dart';
+import '../../../shared/widgets/back_to_menu_bar.dart';
 import '../../../shared/models/course_model.dart';
 
 class HomeTab extends ConsumerWidget {
@@ -24,6 +25,7 @@ class HomeTab extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.navy,
+      floatingActionButton: const AiAssistantFab(),
       body: AsyncValueContent<List<Course>>(
         value: coursesAsync,
         builder: (courses) {
@@ -39,6 +41,7 @@ class HomeTab extends ConsumerWidget {
 
           return CustomScrollView(
             slivers: [
+              const SliverToBoxAdapter(child: BackToMenuBar()),
               SliverToBoxAdapter(
                 child: HubHeroShell(
                   brandTitle: s.appName,
@@ -54,20 +57,13 @@ class HomeTab extends ConsumerWidget {
                       label: stats.level <= 3 ? s.rookie : 'Lv.${stats.level}',
                     ),
                   ),
-                  navItems: [
-                    HubNavItem(label: s.home, active: true, onTap: () {}),
-                    HubNavItem(label: s.freeLibraryNav, onTap: () => context.go('/learn')),
-                    HubNavItem(label: s.servicesHubNav, onTap: () => context.go('/market')),
-                    HubNavItem(label: s.shopNav, onTap: () => context.go('/market')),
-                    HubNavItem(label: s.aboutNav, onTap: () => context.push('/profile')),
-                  ],
                   primaryCta: HubCta(
                     label: s.startLearningFree,
                     onPressed: () => context.go('/learn'),
                   ),
                   secondaryCta: HubCta(
                     label: s.bookInHub,
-                    onPressed: () => context.go('/market'),
+                    onPressed: () => context.push('/hub'),
                   ),
                 ),
               ),

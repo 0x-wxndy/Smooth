@@ -66,7 +66,7 @@ extension PaymentGatewayX on PaymentGateway {
       case PaymentGateway.card:
         return 'Carte bancaire';
       case PaymentGateway.coins:
-        return 'Smooth Coins';
+        return 'Samooth Coins';
     }
   }
 

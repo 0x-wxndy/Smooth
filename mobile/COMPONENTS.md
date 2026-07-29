@@ -1,6 +1,6 @@
 # Component Library
 
-Reusable UI primitives in `lib/shared/widgets/`. All follow Material 3 + Smooth brand tokens from `lib/core/theme/`.
+Reusable UI primitives in `lib/shared/widgets/`. All follow Material 3 + Samooth brand tokens from `lib/core/theme/`.
 
 ## Components
 

@@ -1,4 +1,4 @@
-# Smooth Mobile App
+# Samooth Mobile App
 
 **Offline-first prototype** — all data lives in a local SQLite database. No backend or internet connection required. Ideal for APK delivery to non-technical clients.
 

@@ -185,7 +185,7 @@ class CardGatewayScreen extends StatefulWidget {
 
 class _CardGatewayScreenState extends State<CardGatewayScreen> {
   final _cardCtrl = TextEditingController(text: '4111 1111 1111 1111');
-  final _nameCtrl = TextEditingController(text: 'SMOOTH DEMO');
+  final _nameCtrl = TextEditingController(text: 'SAMOOTH DEMO');
   final _expCtrl = TextEditingController(text: '03/29');
   final _cvvCtrl = TextEditingController(text: '123');
   bool _processing = false;

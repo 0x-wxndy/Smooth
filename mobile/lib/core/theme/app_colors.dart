@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Smooth brand — reinterpreted from client vision (teal hub + soft section accents).
+/// Samooth brand — reinterpreted from client vision (teal hub + soft section accents).
 abstract final class AppColors {
   // Brand
   static const primary = Color(0xFF0D9488); // teal

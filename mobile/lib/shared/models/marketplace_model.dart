@@ -11,6 +11,7 @@ class FreelanceService {
     required this.reviewCount,
     this.providerName,
     this.providerAvatar,
+    this.providerId,
     this.category,
   });
 
@@ -23,11 +24,35 @@ class FreelanceService {
   final int reviewCount;
   final String? providerName;
   final String? providerAvatar;
+  final String? providerId;
   final String? category;
 
   String get priceLabel => Money.format(priceCents);
 
   String priceFromLabel(String fromPrefix) => '$fromPrefix ${Money.format(priceCents)}';
+}
+
+/// Top-rated freelancer / teacher shown on the marketplace.
+class FeaturedProvider {
+  const FeaturedProvider({
+    required this.userId,
+    required this.displayName,
+    required this.headline,
+    required this.ratingAvg,
+    required this.priceCents,
+    required this.tags,
+    this.avatarUrl,
+  });
+
+  final String userId;
+  final String displayName;
+  final String headline;
+  final double ratingAvg;
+  final int priceCents;
+  final List<String> tags;
+  final String? avatarUrl;
+
+  String hourlyLabel(String perHourSuffix) => Money.perHour(priceCents ~/ 30, perHourSuffix: perHourSuffix);
 }
 
 class JobPosting {

@@ -31,6 +31,7 @@ class Course {
     this.progressPercent,
     this.teacherName,
     this.teacherAvatar,
+    this.teacherId,
   });
 
   final String id;
@@ -48,6 +49,7 @@ class Course {
   final double? progressPercent;
   final String? teacherName;
   final String? teacherAvatar;
+  final String? teacherId;
 
   String get durationLabel {
     final hours = durationMinutes ~/ 60;
@@ -97,10 +99,15 @@ class Lesson {
     required this.title,
     required this.durationMinutes,
     this.completed = false,
+    this.videoAsset,
   });
 
   final String id;
   final String title;
   final int durationMinutes;
   final bool completed;
+  /// Flutter asset path when the lesson has a bundled video.
+  final String? videoAsset;
+
+  bool get hasVideo => videoAsset != null && videoAsset!.isNotEmpty;
 }

@@ -1,5 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/theme/app_assets.dart';
 import '../../core/theme/app_colors.dart';
+
+/// Compact app logo used in heroes, welcome screen, etc.
+class SmoothBrandMark extends StatelessWidget {
+  const SmoothBrandMark({
+    super.key,
+    this.size = 34,
+    this.borderRadius = 10,
+  });
+
+  final double size;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: Image.asset(
+        AppAssets.logo,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+}
 
 class SmoothCard extends StatelessWidget {
   const SmoothCard({
@@ -368,6 +395,22 @@ class NetworkCover extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Floating button to open the AI learning assistant.
+class AiAssistantFab extends StatelessWidget {
+  const AiAssistantFab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton(
+      onPressed: () => context.push('/ai'),
+      backgroundColor: AppColors.accentPurple,
+      foregroundColor: Colors.white,
+      elevation: 4,
+      child: const Icon(Icons.auto_awesome_rounded, size: 26),
     );
   }
 }

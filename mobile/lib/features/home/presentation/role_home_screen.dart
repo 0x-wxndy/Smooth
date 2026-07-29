@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../admin/presentation/admin_screens.dart';
 import 'home_screen.dart';
 import 'teacher_dashboard_screen.dart';
 import 'client_dashboard_screen.dart';
@@ -17,7 +18,7 @@ class RoleHomeTab extends ConsumerWidget {
     return switch (role) {
       UserRole.teacher => const TeacherDashboardTab(),
       UserRole.client => const ClientDashboardTab(),
-      UserRole.admin => const HomeTab(),
+      UserRole.admin => const AdminDashboardTab(),
       UserRole.learner => const HomeTab(),
     };
   }

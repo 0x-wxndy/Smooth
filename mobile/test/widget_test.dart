@@ -13,6 +13,6 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: SmoothApp()));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Smooth'), findsWidgets);
+    expect(find.text('Samooth'), findsWidgets);
   });
 }

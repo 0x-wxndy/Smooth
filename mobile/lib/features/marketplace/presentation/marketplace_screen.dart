@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_localizations.dart';
-import '../../../core/theme/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/money.dart';
 import '../../../shared/models/user_model.dart';
+import '../../../shared/models/course_model.dart';
+import '../../../shared/models/marketplace_model.dart';
+import '../../hub/presentation/hub_screens.dart';
+import '../../profile/presentation/provider_profile_screen.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
@@ -21,9 +24,6 @@ class MarketTab extends ConsumerStatefulWidget {
 }
 
 class _MarketTabState extends ConsumerState<MarketTab> {
-  /// Learner-only: student vs browse-pros toggle.
-  bool _studentView = true;
-
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
@@ -47,24 +47,14 @@ class _MarketTabState extends ConsumerState<MarketTab> {
             const SizedBox(height: 14),
 
             if (role == UserRole.learner) ...[
-              _LearnerToggle(
-                s: s,
-                studentView: _studentView,
-                onChanged: (v) => setState(() => _studentView = v),
-              ),
+              _FreeLibrarySection(coursesAsync: coursesAsync, s: s),
               const SizedBox(height: 16),
-              if (_studentView) _FreeLibrarySection(coursesAsync: coursesAsync, s: s),
-              _FreelancersSection(s: s),
-              if (!_studentView) ...[
-                _ProjectsSection(s: s),
-                _AllServicesSection(servicesAsync: servicesAsync, s: s),
-              ] else ...[
-                _ProjectsSection(s: s),
-                _PremiumCoursesSection(coursesAsync: coursesAsync, s: s),
-              ],
+              _PremiumCoursesSection(coursesAsync: coursesAsync, s: s),
             ],
 
             if (role == UserRole.teacher) ...[
+              const HubFacilitiesPromo(),
+              const SizedBox(height: 14),
               _CreatorEarningsBanner(
                 s: s,
                 walletAsync: walletAsync,
@@ -82,7 +72,9 @@ class _MarketTabState extends ConsumerState<MarketTab> {
               _PremiumCoursesSection(coursesAsync: coursesAsync, s: s),
             ],
 
-            if (role == UserRole.client || role == UserRole.admin) ...[
+            if (role == UserRole.client) ...[
+              const HubFacilitiesPromo(),
+              const SizedBox(height: 14),
               _ClientHero(s: s),
               const SizedBox(height: 14),
               _FreelancersSection(s: s),
@@ -107,7 +99,6 @@ class _MarketTabState extends ConsumerState<MarketTab> {
           label: Text(s.offerService, style: const TextStyle(fontWeight: FontWeight.w700)),
         );
       case UserRole.client:
-      case UserRole.admin:
         return FloatingActionButton.extended(
           onPressed: () => context.go('/jobs'),
           backgroundColor: AppColors.accentGreen,
@@ -116,6 +107,8 @@ class _MarketTabState extends ConsumerState<MarketTab> {
           label: Text(s.postAJob, style: const TextStyle(fontWeight: FontWeight.w700)),
         );
       case UserRole.learner:
+        return null;
+      case UserRole.admin:
         return null;
     }
   }
@@ -191,7 +184,7 @@ class _MarketTabState extends ConsumerState<MarketTab> {
 class _MarketHeader extends StatelessWidget {
   const _MarketHeader({required this.s, required this.walletAsync});
   final S s;
-  final AsyncValue walletAsync;
+  final AsyncValue<GamificationStats> walletAsync;
 
   @override
   Widget build(BuildContext context) {
@@ -220,31 +213,6 @@ class _MarketHeader extends StatelessWidget {
   }
 }
 
-class _LearnerToggle extends StatelessWidget {
-  const _LearnerToggle({required this.s, required this.studentView, required this.onChanged});
-  final S s;
-  final bool studentView;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(color: AppColors.surfaceVariant, borderRadius: BorderRadius.circular(30)),
-      child: Row(
-        children: [
-          Expanded(
-            child: _ViewToggle(label: s.studentView, selected: studentView, onTap: () => onChanged(true)),
-          ),
-          Expanded(
-            child: _ViewToggle(label: s.proView, selected: !studentView, onTap: () => onChanged(false)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CreatorEarningsBanner extends StatelessWidget {
   const _CreatorEarningsBanner({
     required this.s,
@@ -252,7 +220,7 @@ class _CreatorEarningsBanner extends StatelessWidget {
     required this.onClaimBonus,
   });
   final S s;
-  final AsyncValue walletAsync;
+  final AsyncValue<GamificationStats> walletAsync;
   final VoidCallback onClaimBonus;
 
   @override
@@ -345,8 +313,8 @@ class _MyListingsSection extends StatelessWidget {
     required this.myServicesAsync,
   });
   final S s;
-  final AsyncValue myCoursesAsync;
-  final AsyncValue myServicesAsync;
+  final AsyncValue<List<Course>> myCoursesAsync;
+  final AsyncValue<List<FreelanceService>> myServicesAsync;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +372,7 @@ class _MyListingsSection extends StatelessWidget {
 
 class _JobsOffersSection extends StatelessWidget {
   const _JobsOffersSection({required this.jobsAsync, required this.s});
-  final AsyncValue jobsAsync;
+  final AsyncValue<List<JobPosting>> jobsAsync;
   final S s;
 
   @override
@@ -437,7 +405,7 @@ class _JobsOffersSection extends StatelessWidget {
 
 class _FreeLibrarySection extends StatelessWidget {
   const _FreeLibrarySection({required this.coursesAsync, required this.s});
-  final AsyncValue coursesAsync;
+  final AsyncValue<List<Course>> coursesAsync;
   final S s;
 
   @override
@@ -487,70 +455,67 @@ class _FreeLibrarySection extends StatelessWidget {
   }
 }
 
-class _FreelancersSection extends StatelessWidget {
+class _FreelancersSection extends ConsumerWidget {
   const _FreelancersSection({required this.s});
   final S s;
 
   @override
-  Widget build(BuildContext context) {
-    return BorderedSection(
-      borderColor: AppColors.accentOrange,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.accentOrange.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.work_rounded, color: AppColors.accentOrange),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(s.featuredFreelancers, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 195,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final featuredAsync = ref.watch(featuredProvidersProvider);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: AsyncValueContent(
+        value: featuredAsync,
+        builder: (providers) {
+          if (providers.isEmpty) return const SizedBox.shrink();
+          return BorderedSection(
+            borderColor: AppColors.accentOrange,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FreelancerMiniCard(
-                  name: 'Omar K.',
-                  role: s.graphicDesigner,
-                  rate: Money.perHour(2000, perHourSuffix: s.perHour),
-                  rating: 4.9,
-                  avatarUrl: AppAssets.avatar2,
-                  tags: const ['Branding', 'Logo'],
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentOrange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.work_rounded, color: AppColors.accentOrange),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(s.featuredFreelancers, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                FreelancerMiniCard(
-                  name: 'Ayesha S.',
-                  role: s.fullstackDev,
-                  rate: Money.perHour(3800, perHourSuffix: s.perHour),
-                  rating: 4.8,
-                  avatarUrl: AppAssets.avatar3,
-                  tags: const ['React', 'Node'],
-                ),
-                const SizedBox(width: 10),
-                FreelancerMiniCard(
-                  name: 'James O.',
-                  role: s.uiuxDesigner,
-                  rate: Money.perHour(3000, perHourSuffix: s.perHour),
-                  rating: 5.0,
-                  avatarUrl: AppAssets.avatar4,
-                  tags: const ['Figma', 'Mobile'],
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 195,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: providers.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (_, i) {
+                      final p = providers[i];
+                      return FreelancerMiniCard(
+                        name: p.displayName,
+                        role: p.headline,
+                        rate: p.hourlyLabel(s.perHour),
+                        rating: p.ratingAvg,
+                        avatarUrl: p.avatarUrl ?? featuredAvatarForIndex(i),
+                        tags: p.tags,
+                        onTap: () => context.push('/providers/${p.userId}'),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -589,7 +554,7 @@ class _ProjectsSection extends StatelessWidget {
 
 class _PremiumCoursesSection extends StatelessWidget {
   const _PremiumCoursesSection({required this.coursesAsync, required this.s});
-  final AsyncValue coursesAsync;
+  final AsyncValue<List<Course>> coursesAsync;
   final S s;
 
   @override
@@ -627,7 +592,7 @@ class _PremiumCoursesSection extends StatelessWidget {
 
 class _AllServicesSection extends StatelessWidget {
   const _AllServicesSection({required this.servicesAsync, required this.s});
-  final AsyncValue servicesAsync;
+  final AsyncValue<List<FreelanceService>> servicesAsync;
   final S s;
 
   @override
@@ -645,42 +610,6 @@ class _AllServicesSection extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ViewToggle extends StatelessWidget {
-  const _ViewToggle({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: selected
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))]
-              : null,
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-            color: selected ? AppColors.primary : AppColors.textSecondary,
-          ),
-        ),
-      ),
     );
   }
 }

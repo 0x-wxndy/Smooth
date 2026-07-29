@@ -77,7 +77,7 @@ abstract final class GameContent {
         'All greys, no accent',
       ],
       correctIndex: 1,
-      hint: 'Smooth Hub leans teal + navy.',
+      hint: 'Samooth Hub leans teal + navy.',
     ),
     QuizQuestion(
       prompt: 'Text on a dark navy hero should be…',

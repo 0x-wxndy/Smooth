@@ -1,8 +1,13 @@
 class AppConfig {
-  static const appName = 'Smooth';
+  static const appName = 'Samooth';
   static const aiDailyLimit = 5;
   static const dbName = 'smooth.db';
-  static const dbVersion = 3;
+  static const dbVersion = 9;
+
+  /// Institution contact (shown to users / handled by admin).
+  static const hubPhone = '+213 555 12 34 56';
+  static const hubEmail = 'hub@smooth.app';
+  static const hubAddress = 'Samooth Hub — Alger Centre';
 
   /// Coins / XP earned when completing a lesson.
   static const lessonCoinReward = 15;
@@ -37,5 +42,6 @@ class AppConfig {
   static const demoLearnerEmail = 'demo@smooth.app';
   static const demoTeacherEmail = 'maria@smooth.app';
   static const demoClientEmail = 'client@smooth.app';
+  static const demoAdminEmail = 'admin@smooth.app';
   static const demoEmail = demoLearnerEmail;
 }

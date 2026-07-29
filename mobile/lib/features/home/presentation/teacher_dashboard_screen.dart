@@ -9,6 +9,7 @@ import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/hub_hero.dart';
+import '../../../shared/widgets/back_to_menu_bar.dart';
 import '../../../shared/widgets/smooth_components.dart';
 
 class TeacherDashboardTab extends ConsumerWidget {
@@ -30,6 +31,7 @@ class TeacherDashboardTab extends ConsumerWidget {
       backgroundColor: AppColors.navy,
       body: CustomScrollView(
         slivers: [
+          const SliverToBoxAdapter(child: BackToMenuBar()),
           SliverToBoxAdapter(
             child: HubHeroShell(
               brandTitle: s.creatorStudio,
@@ -46,22 +48,15 @@ class TeacherDashboardTab extends ConsumerWidget {
                   label: stats.level <= 3 ? s.rookie : 'Lv.${stats.level}',
                 ),
               ),
-              navItems: [
-                HubNavItem(label: s.dashboard, active: true, onTap: () {}),
-                HubNavItem(label: s.courses, onTap: () => context.go('/teacher/courses')),
-                HubNavItem(label: s.market, onTap: () => context.go('/market')),
-                HubNavItem(label: s.jobs, onTap: () => context.go('/jobs')),
-                HubNavItem(label: s.profile, onTap: () => context.go('/profile')),
-              ],
               primaryCta: HubCta(
                 label: s.postCourse,
                 icon: Icons.menu_book_rounded,
                 onPressed: () => context.push('/teacher/post-course'),
               ),
               secondaryCta: HubCta(
-                label: s.browseJobs,
-                icon: Icons.work_outline,
-                onPressed: () => context.go('/jobs'),
+                label: s.hubFacilities,
+                icon: Icons.meeting_room_outlined,
+                onPressed: () => context.push('/hub'),
               ),
             ),
           ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/database/database_init.dart';
 import 'core/theme/app_colors.dart';
+import 'features/auth/presentation/brand_splash_screen.dart';
 import 'shared/data/database/app_database.dart';
 import 'app.dart';
 
@@ -20,10 +22,18 @@ class BootstrapApp extends StatefulWidget {
 }
 
 class _BootstrapAppState extends State<BootstrapApp> {
+  Locale _locale = const Locale('fr');
   late final Future<void> _initFuture = _initialize();
 
   Future<void> _initialize() async {
-    await AppDatabase.instance.init();
+    final prefs = await SharedPreferences.getInstance();
+    final code = prefs.getString('smooth_locale') ?? 'fr';
+    _locale = Locale(code);
+
+    await Future.wait([
+      AppDatabase.instance.init(),
+      Future<void>.delayed(const Duration(milliseconds: 1600)),
+    ]);
   }
 
   @override
@@ -34,32 +44,7 @@ class _BootstrapAppState extends State<BootstrapApp> {
         if (snapshot.connectionState != ConnectionState.done) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            home: Scaffold(
-              backgroundColor: AppColors.background,
-              body: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.gradientPrimary,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Icon(Icons.waves, color: Colors.white, size: 32),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Smooth',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 24),
-                    const CircularProgressIndicator(),
-                  ],
-                ),
-              ),
-            ),
+            home: BrandSplashScreen(locale: _locale),
           );
         }
 

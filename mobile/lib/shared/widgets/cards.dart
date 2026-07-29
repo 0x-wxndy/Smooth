@@ -1,8 +1,14 @@
+import 'dart:io' show File;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../core/theme/app_assets.dart';
 import '../../core/theme/app_colors.dart';
+import '../../shared/models/marketplace_model.dart';
 import '../../shared/models/course_model.dart';
 import 'smooth_components.dart';
+import 'provider_name_link.dart';
 
 class CourseCard extends StatelessWidget {
   const CourseCard({
@@ -65,9 +71,11 @@ class CourseCard extends StatelessWidget {
                 ),
                 if (course.teacherName != null) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    course.teacherName!,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ProviderNameLink(
+                    name: course.teacherName!,
+                    providerId: course.teacherId,
+                    style: const TextStyle(color: AppColors.accentPurple, fontSize: 12, fontWeight: FontWeight.w700),
+                    iconSize: 12,
                   ),
                 ],
                 const SizedBox(height: 8),
@@ -159,11 +167,7 @@ class _DarkCourseTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              AppAssets.courseThumb(course.category.name),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: AppColors.navy),
-            ),
+            _CourseThumbImage(course: course),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -234,6 +238,42 @@ class _DarkCourseTile extends StatelessWidget {
       case CourseCategory.other:
         return Icons.school;
     }
+  }
+}
+
+class _CourseThumbImage extends StatelessWidget {
+  const _CourseThumbImage({required this.course});
+
+  final Course course;
+
+  @override
+  Widget build(BuildContext context) {
+    final thumb = course.thumbnailUrl;
+    if (thumb != null && thumb.isNotEmpty) {
+      if (thumb.startsWith('http')) {
+        return Image.network(
+          thumb,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallback(),
+        );
+      }
+      if (!kIsWeb) {
+        return Image.file(
+          File(thumb),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallback(),
+        );
+      }
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    return Image.network(
+      AppAssets.courseThumb(course.category.name),
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(color: AppColors.navy),
+    );
   }
 }
 
@@ -320,7 +360,7 @@ class FreelancerMiniCard extends StatelessWidget {
 class ServiceCard extends StatelessWidget {
   const ServiceCard({super.key, required this.service, this.onTap});
 
-  final dynamic service;
+  final FreelanceService service;
   final VoidCallback? onTap;
 
   @override
@@ -344,12 +384,14 @@ class ServiceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      service.title as String,
+                      service.title,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    Text(
-                      service.providerName as String? ?? '',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    ProviderNameLink(
+                      name: service.providerName ?? '',
+                      providerId: service.providerId,
+                      style: const TextStyle(fontSize: 12),
+                      iconSize: 12,
                     ),
                   ],
                 ),
@@ -358,7 +400,7 @@ class ServiceCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            service.description as String,
+            service.description,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -367,12 +409,12 @@ class ServiceCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                service.priceLabel as String,
+                service.priceLabel,
                 style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary),
               ),
               const SizedBox(width: 12),
               Text(
-                '★ ${(service.ratingAvg as double).toStringAsFixed(2)}',
+                '★ ${service.ratingAvg.toStringAsFixed(2)}',
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               const Spacer(),
@@ -389,13 +431,22 @@ class ServiceCard extends StatelessWidget {
 }
 
 class JobCard extends StatelessWidget {
-  const JobCard({super.key, required this.job, this.onTap});
+  const JobCard({
+    super.key,
+    required this.job,
+    this.onTap,
+    this.onApply,
+    this.applied = false,
+  });
 
   final dynamic job;
   final VoidCallback? onTap;
+  final VoidCallback? onApply;
+  final bool applied;
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     return SmoothCard(
       onTap: onTap,
       margin: const EdgeInsets.only(bottom: 12),
@@ -420,6 +471,21 @@ class JobCard extends StatelessWidget {
               _Tag(job.salaryLabel as String),
             ],
           ),
+          if (onApply != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                onPressed: applied ? null : onApply,
+                style: FilledButton.styleFrom(
+                  backgroundColor: applied ? AppColors.surfaceVariant : AppColors.primary,
+                  foregroundColor: applied ? AppColors.textSecondary : Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
+                child: Text(applied ? s.alreadyApplied : s.postuler),
+              ),
+            ),
+          ],
         ],
       ),
     );

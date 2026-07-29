@@ -8,6 +8,7 @@ import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/hub_hero.dart';
+import '../../../shared/widgets/back_to_menu_bar.dart';
 import '../../../shared/widgets/smooth_components.dart';
 
 class ClientDashboardTab extends ConsumerWidget {
@@ -24,6 +25,7 @@ class ClientDashboardTab extends ConsumerWidget {
       backgroundColor: AppColors.navy,
       body: CustomScrollView(
         slivers: [
+          const SliverToBoxAdapter(child: BackToMenuBar()),
           SliverToBoxAdapter(
             child: HubHeroShell(
               brandTitle: s.clientHub,
@@ -32,22 +34,15 @@ class ClientDashboardTab extends ConsumerWidget {
               heroSubtitle: s.clientHeroSubtitle,
               coverUrl: AppAssets.heroWorkspace,
               coverHeight: 330,
-              navItems: [
-                HubNavItem(label: s.home, active: true, onTap: () {}),
-                HubNavItem(label: s.servicesHubNav, onTap: () => context.go('/market')),
-                HubNavItem(label: s.jobs, onTap: () => context.go('/jobs')),
-                HubNavItem(label: s.shopNav, onTap: () => context.go('/market')),
-                HubNavItem(label: s.aboutNav, onTap: () => context.go('/profile')),
-              ],
               primaryCta: HubCta(
                 label: s.browseFreelancers,
                 icon: Icons.person_search,
                 onPressed: () => context.go('/market'),
               ),
               secondaryCta: HubCta(
-                label: s.postAJob,
-                icon: Icons.post_add,
-                onPressed: () => context.go('/jobs'),
+                label: s.hubFacilities,
+                icon: Icons.apartment_outlined,
+                onPressed: () => context.push('/hub'),
               ),
             ),
           ),

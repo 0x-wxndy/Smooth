@@ -1,5 +1,7 @@
 /// Remote public images used across the prototype (Unsplash).
 abstract final class AppAssets {
+  static const logo = 'assets/branding/smooth_logo.png';
+
   static const heroOffice =
       'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80';
   static const heroWorkspace =

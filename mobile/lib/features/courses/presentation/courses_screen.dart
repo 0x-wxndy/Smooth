@@ -10,6 +10,7 @@ import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/smooth_components.dart';
+import 'learn_mentors_section.dart';
 
 class LearnTab extends ConsumerStatefulWidget {
   const LearnTab({super.key});
@@ -32,6 +33,7 @@ class _LearnTabState extends ConsumerState<LearnTab> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: const AiAssistantFab(),
       appBar: AppBar(
         title: Text(s.learn),
         actions: [
@@ -247,7 +249,9 @@ class _LearnTabState extends ConsumerState<LearnTab> {
                   ),
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
+
+              const LearnMentorsSection(),
 
               SectionHeader(title: s.courses),
               SizedBox(

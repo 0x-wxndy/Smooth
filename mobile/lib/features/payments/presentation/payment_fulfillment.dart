@@ -29,7 +29,7 @@ abstract final class PaymentFulfillment {
         }
       case PaymentPurpose.service:
         if (args.itemId != null) {
-          await db.awardBookingToProvider(args.itemId!);
+          await db.awardBookingToProvider(args.itemId!, clientId: userId);
         }
       case PaymentPurpose.aiTokens:
         if (args.aiTokens != null && args.aiTokens! > 0) {

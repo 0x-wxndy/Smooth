@@ -20,19 +20,7 @@ class TeacherCoursesScreen extends ConsumerWidget {
     final walletAsync = ref.watch(gamificationProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(s.myCourses),
-        actions: [
-          walletAsync.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (w) => Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Center(child: CoinBadge(amount: w.coins)),
-            ),
-          ),
-        ],
-      ),
+
       body: AsyncValueContent(
         value: coursesAsync,
         builder: (courses) {

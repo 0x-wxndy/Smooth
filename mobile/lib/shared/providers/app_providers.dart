@@ -6,6 +6,7 @@ import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/marketplace_model.dart';
 import '../models/hub_admin_model.dart';
+import '../models/publication_model.dart';
 import '../services/auth_repository.dart';
 import 'database_provider.dart';
 
@@ -271,6 +272,11 @@ final reportsProvider = FutureProvider<List<UserReport>>((ref) async {
 
 final contactMessagesProvider = FutureProvider<List<ContactMessage>>((ref) async {
   return ref.watch(databaseProvider).getContactMessages();
+});
+
+final announcementsProvider = FutureProvider<List<Publication>>((ref) async {
+  final pubs = await ref.watch(databaseProvider).getPublications();
+  return pubs.where((p) => p.isAnnouncement).toList();
 });
 
 final userMessagesProvider = FutureProvider<List<ContactMessage>>((ref) async {

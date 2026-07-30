@@ -34,23 +34,7 @@ class _LearnTabState extends ConsumerState<LearnTab> {
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: const AiAssistantFab(),
-      appBar: AppBar(
-        title: Text(s.learn),
-        actions: [
-          walletAsync.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (w) => Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: CoinBadge(amount: w.coins),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () => context.push('/search'),
-          ),
-        ],
-      ),
+
       body: AsyncValueContent(
         value: coursesAsync,
         builder: (courses) {

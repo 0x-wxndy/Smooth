@@ -139,18 +139,7 @@ class _UserMessagesScreenState extends ConsumerState<UserMessagesScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(s.myMessages),
-            Text(
-              s.myMessagesSub,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
+     
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _compose,
         backgroundColor: AppColors.primary,

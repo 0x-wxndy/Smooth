@@ -450,6 +450,7 @@ class S {
   String get publications => t('publications');
   String get noPublications => t('noPublications');
   String get newPublication => t('newPublication');
+  String get announcements => t('announcements');
   String get hashtags => t('hashtags');
   String get hashtagsHint => t('hashtagsHint');
   String get publish => t('publish');
@@ -1966,7 +1967,13 @@ class S {
       'fr': 'Utilisateur introuvable',
       'ar': 'المستخدم غير موجود',
     },
+    'announcements': {
+      'en': 'Announcements',
+      'fr': 'Annonces',
+      'ar': 'الإعلانات',
+    },
   };
+
 }
 
 class SDelegate extends LocalizationsDelegate<S> {

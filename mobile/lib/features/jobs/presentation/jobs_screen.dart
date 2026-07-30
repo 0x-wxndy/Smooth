@@ -36,7 +36,6 @@ class _JobsTabState extends ConsumerState<JobsTab> {
     final jobsAsync = ref.watch(jobsProvider(_remoteOnly ? true : null));
 
     return Scaffold(
-      appBar: AppBar(title: Text(s.opportunities)),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

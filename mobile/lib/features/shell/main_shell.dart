@@ -83,24 +83,6 @@ List<ShellNavItem> navItemsForRole(UserRole role) {
           labelBuilder: (s) => s.market,
         ),
         ShellNavItem(
-          path: '/hub',
-          icon: Icons.apartment_outlined,
-          selectedIcon: Icons.apartment,
-          labelBuilder: (s) => s.hub,
-        ),
-        ShellNavItem(
-          path: '/jobs',
-          icon: Icons.work_outline,
-          selectedIcon: Icons.work,
-          labelBuilder: (s) => s.opportunities,
-        ),
-        ShellNavItem(
-          path: '/learn',
-          icon: Icons.menu_book_outlined,
-          selectedIcon: Icons.menu_book,
-          labelBuilder: (s) => s.learn,
-        ),
-        ShellNavItem(
           path: '/messages',
           icon: Icons.mail_outline,
           selectedIcon: Icons.mail,

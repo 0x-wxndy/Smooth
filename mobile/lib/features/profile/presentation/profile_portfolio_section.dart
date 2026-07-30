@@ -122,7 +122,12 @@ class ProfilePortfolioSection extends ConsumerWidget {
                 ),
                 if (role == UserRole.teacher || role == UserRole.client)
                   TextButton.icon(
-                    onPressed: () => _showNewPublicationSheet(context, ref, userId),
+                    onPressed: () => showNewPublicationSheet(
+                      context: context,
+                      ref: ref,
+                      userId: userId,
+                      defaultKind: role == UserRole.client ? 'offer' : 'post',
+                    ),
                     icon: const Icon(Icons.add, size: 16),
                     label: Text(s.newPublication, style: const TextStyle(fontSize: 12)),
                   ),
@@ -146,84 +151,90 @@ class ProfilePortfolioSection extends ConsumerWidget {
     );
   }
 
-  Future<void> _showNewPublicationSheet(BuildContext context, WidgetRef ref, String userId) async {
-    final s = S.of(context);
-    final bodyCtrl = TextEditingController();
-    final tagsCtrl = TextEditingController();
-    var saving = false;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 16,
-                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(s.newPublication, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                  const SizedBox(height: 4),
-                  Text(s.hashtagsHint, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: bodyCtrl,
-                    maxLines: 4,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(labelText: s.message, border: const OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: tagsCtrl,
-                    decoration: InputDecoration(
-                      labelText: s.hashtags,
-                      hintText: '#design #project',
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: saving || bodyCtrl.text.trim().isEmpty
-                        ? null
-                        : () async {
-                            setState(() => saving = true);
-                            final tags = tagsCtrl.text
-                                .split(RegExp(r'[\s,]+'))
-                                .map((t) => t.trim())
-                                .where((t) => t.isNotEmpty)
-                                .toList();
-                            await ref.read(databaseProvider).createPublication(
-                                  authorId: userId,
-                                  body: bodyCtrl.text.trim(),
-                                  hashtags: tags,
-                                  kind: role == UserRole.client ? 'offer' : 'post',
-                                );
-                            ref.invalidate(userPublicationsProvider(userId));
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          },
-                    child: Text(s.publish, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+}
+Future<void> showNewPublicationSheet({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String userId,
+  String defaultKind = 'post',
+}) async {
+  final s = S.of(context);
+  final bodyCtrl = TextEditingController();
+  final tagsCtrl = TextEditingController();
+  var saving = false;
 
-    bodyCtrl.dispose();
-    tagsCtrl.dispose();
-  }
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) {
+      return StatefulBuilder(
+        builder: (ctx, setState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.viewInsetsOf(ctx).bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(s.newPublication, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                const SizedBox(height: 4),
+                Text(s.hashtagsHint, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: bodyCtrl,
+                  maxLines: 4,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(labelText: s.message, border: const OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: tagsCtrl,
+                  decoration: InputDecoration(
+                    labelText: s.hashtags,
+                    hintText: '#design #project',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: saving || bodyCtrl.text.trim().isEmpty
+                      ? null
+                      : () async {
+                          setState(() => saving = true);
+                          final tags = tagsCtrl.text
+                              .split(RegExp(r'[\s,]+'))
+                              .map((t) => t.trim())
+                              .where((t) => t.isNotEmpty)
+                              .toList();
+                          await ref.read(databaseProvider).createPublication(
+                                authorId: userId,
+                                body: bodyCtrl.text.trim(),
+                                hashtags: tags,
+                                kind: defaultKind,
+                              );
+                          ref.invalidate(userPublicationsProvider(userId));
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        },
+                  child: Text(s.publish, style: const TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+
+  bodyCtrl.dispose();
+  tagsCtrl.dispose();
 }
 
 class _PortfolioStat extends StatelessWidget {

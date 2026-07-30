@@ -5,6 +5,7 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../profile/presentation/profile_portfolio_section.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/hub_hero.dart';
@@ -72,12 +73,21 @@ class ClientDashboardTab extends ConsumerWidget {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => context.go('/jobs'),
-                                  child: Text(s.postAJob),
-                                ),
+                             Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  final userId = user?.id;
+                                  if (userId == null) return;
+                                  showNewPublicationSheet(
+                                    context: context,
+                                    ref: ref,
+                                    userId: userId,
+                                    defaultKind: 'offer',
+                                  );
+                                },
+                                child: Text(s.postAJob),
                               ),
+                            ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: FilledButton(

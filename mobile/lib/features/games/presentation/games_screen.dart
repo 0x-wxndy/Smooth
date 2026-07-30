@@ -19,19 +19,7 @@ class GamesTab extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(s.eduGames),
-        actions: [
-          walletAsync.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (w) => Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: CoinBadge(amount: w.coins),
-            ),
-          ),
-        ],
-      ),
+     
       body: AsyncValueContent(
         value: gamesAsync,
         builder: (games) => ListView(

@@ -94,7 +94,6 @@ class HubFacilitiesScreen extends ConsumerWidget {
 
     if (role == UserRole.admin) {
       return Scaffold(
-        appBar: AppBar(title: Text(s.hubFacilities)),
         body: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -270,14 +269,20 @@ class RoomsCatalogScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _book(BuildContext context, WidgetRef ref, String roomId, String billing) async {
+Future<void> _book(BuildContext context, WidgetRef ref, String roomId, String billing) async {
     final s = S.of(context);
     final userId = ref.read(authProvider).user?.id;
     if (userId == null) return;
+    final now = DateTime.now();
+    final end = billing == 'day'
+        ? now.add(const Duration(days: 1))
+        : now.add(const Duration(hours: 2));
     final booking = await ref.read(databaseProvider).bookRoom(
           roomId: roomId,
           userId: userId,
           billing: billing,
+          startAt: now,
+          endAt: end,
         );
     ref.invalidate(roomBookingsProvider);
     ref.invalidate(adminStatsProvider);

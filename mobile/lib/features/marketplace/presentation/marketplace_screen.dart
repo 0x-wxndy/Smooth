@@ -10,6 +10,7 @@ import '../../../shared/models/course_model.dart';
 import '../../../shared/models/marketplace_model.dart';
 import '../../hub/presentation/hub_screens.dart';
 import '../../profile/presentation/provider_profile_screen.dart';
+import '../../profile/presentation/profile_portfolio_section.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
@@ -53,7 +54,11 @@ class _MarketTabState extends ConsumerState<MarketTab> {
             ],
 
             if (role == UserRole.teacher) ...[
+             _FreelancersSection(s: s),
+              const SizedBox(height: 14),
               const HubFacilitiesPromo(),
+              const SizedBox(height: 14),
+              _AnnouncementsSection(s: s),
               const SizedBox(height: 14),
               _CreatorEarningsBanner(
                 s: s,
@@ -69,18 +74,19 @@ class _MarketTabState extends ConsumerState<MarketTab> {
               _JobsOffersSection(jobsAsync: jobsAsync, s: s),
               _ProjectsSection(s: s, title: s.clientRequests),
               _AllServicesSection(servicesAsync: servicesAsync, s: s),
-              _PremiumCoursesSection(coursesAsync: coursesAsync, s: s),
             ],
 
             if (role == UserRole.client) ...[
+               _FreelancersSection(s: s),
+              const SizedBox(height: 14),
               const HubFacilitiesPromo(),
+              const SizedBox(height: 14),
+              _AnnouncementsSection(s: s),
               const SizedBox(height: 14),
               _ClientHero(s: s),
               const SizedBox(height: 14),
-              _FreelancersSection(s: s),
               _AllServicesSection(servicesAsync: servicesAsync, s: s),
               _ProjectsSection(s: s, title: s.pendingProjects),
-              _PremiumCoursesSection(coursesAsync: coursesAsync, s: s),
             ],
           ],
         ),
@@ -100,7 +106,16 @@ class _MarketTabState extends ConsumerState<MarketTab> {
         );
       case UserRole.client:
         return FloatingActionButton.extended(
-          onPressed: () => context.go('/jobs'),
+          onPressed: () {
+            final userId = ref.read(authProvider).user?.id;
+            if (userId == null) return;
+            showNewPublicationSheet(
+              context: context,
+              ref: ref,
+              userId: userId,
+              defaultKind: 'offer',
+            );
+          },
           backgroundColor: AppColors.accentGreen,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.post_add_rounded),
@@ -262,12 +277,12 @@ class _CreatorEarningsBanner extends StatelessWidget {
   }
 }
 
-class _ClientHero extends StatelessWidget {
+class _ClientHero extends ConsumerWidget {
   const _ClientHero({required this.s});
   final S s;
 
   @override
-  Widget build(BuildContext context) {
+    Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -286,10 +301,19 @@ class _ClientHero extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => context.go('/jobs'),
-                  child: Text(s.postAJob),
-                ),
+                  onPressed: () {
+                    final userId = ref.read(authProvider).user?.id;
+                    if (userId == null) return;
+                    showNewPublicationSheet(
+                      context: context,
+                      ref: ref,
+                      userId: userId,
+                      defaultKind: 'offer',
+                    );
+                  },
+                child: Text(s.postAJob),
               ),
+            ),
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton(
@@ -517,6 +541,45 @@ class _FreelancersSection extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _AnnouncementsSection extends ConsumerWidget {
+  const _AnnouncementsSection({required this.s});
+  final S s;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final announcementsAsync = ref.watch(announcementsProvider);
+
+    return AsyncValueContent(
+      value: announcementsAsync,
+      builder: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        return BorderedSection(
+          borderColor: AppColors.primary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.campaign_rounded, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(s.announcements, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ...items.take(3).map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(p.body, style: const TextStyle(fontSize: 13, height: 1.35)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

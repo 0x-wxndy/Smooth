@@ -291,40 +291,49 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             const SizedBox(height: 12),
 
             // ── Moments ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.public, color: AppColors.accentPurple, size: 22),
-                    const SizedBox(width: 8),
-                    Text(s.moments, style: const TextStyle(fontWeight: FontWeight.w800)),
-                    const Spacer(),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        AppAssets.learningDesk,
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.public, color: AppColors.accentPurple, size: 22),
+                  const SizedBox(width: 8),
+                  Text(s.moments, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.network(
+                      AppAssets.learningDesk,
+                      width: 36,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
                         width: 36,
                         height: 28,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 36,
-                          height: 28,
-                          color: AppColors.surfaceVariant,
-                        ),
+                        color: AppColors.surfaceVariant,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    const Text('0', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    user == null
+                        ? '0'
+                        : ref.watch(userPublicationsProvider(user.id)).maybeWhen(
+                              data: (pubs) => '${pubs.length}',
+                              orElse: () => '0',
+                            ),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                ],
               ),
             ),
+          ),
 
             const SizedBox(height: 14),
 

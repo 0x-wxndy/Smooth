@@ -13,6 +13,7 @@ import '../../features/marketplace/presentation/marketplace_screen.dart';
 import '../../features/jobs/presentation/jobs_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/feedback_screen.dart';
+import '../../features/profile/presentation/settings_screen.dart';
 import '../../features/profile/presentation/provider_profile_screen.dart';
 import '../../features/games/presentation/games_screen.dart';
 import '../../features/games/presentation/game_play_screen.dart';
@@ -187,6 +188,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
       GoRoute(path: '/profile/feedback', builder: (_, __) => const FeedbackScreen()),
+      GoRoute(path: '/profile/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(path: '/ai', builder: (_, __) => const AiChatScreen()),
       GoRoute(path: '/games', builder: (_, __) => const GamesTab()),
       GoRoute(

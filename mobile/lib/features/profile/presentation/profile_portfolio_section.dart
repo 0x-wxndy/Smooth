@@ -9,6 +9,7 @@ import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
+import 'portfolio_gallery.dart';
 
 final userPublicationsProvider = FutureProvider.family<List<Publication>, String>((ref, userId) async {
   return ref.watch(databaseProvider).getPublications(authorId: userId);
@@ -90,26 +91,46 @@ class ProfilePortfolioSection extends ConsumerWidget {
                 },
               ),
             ),
+            
             if (role == UserRole.teacher) ...[
-              const SizedBox(height: 14),
-              Text(s.previousWork, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(s.previousWork, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.pastelLavender,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Placeholder images',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentPurple),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              PortfolioGallery(items: mockPortfolioItems(userId)),
+              const SizedBox(height: 16),
               AsyncValueContent(
                 value: servicesAsync,
                 builder: (services) {
-                  if (services.isEmpty) {
-                    return Text(s.noServicesYet, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13));
-                  }
+                  if (services.isEmpty) return const SizedBox.shrink();
                   return Column(
-                    children: services
-                        .take(2)
-                        .map(
-                          (svc) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: ServiceCard(service: svc, onTap: () {}),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s.services, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      ...services.take(2).map(
+                            (svc) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ServiceCard(service: svc, onTap: () {}),
+                            ),
                           ),
-                        )
-                        .toList(),
+                    ],
                   );
                 },
               ),

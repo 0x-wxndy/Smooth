@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
@@ -178,6 +181,98 @@ class _HubCard extends StatelessWidget {
   }
 }
 
+abstract final class MockRoomSchedule {
+  static const openHour = 9;
+  static const closeHour = 18;
+
+  static List<int> busyHoursFor(String roomId, DateTime day) {
+    final seed = roomId.hashCode ^ (day.year * 372 + day.month * 31 + day.day);
+    final rnd = Random(seed);
+    final busyCount = 2 + rnd.nextInt(3); 
+    final hours = <int>{};
+    while (hours.length < busyCount) {
+      hours.add(openHour + rnd.nextInt(closeHour - openHour));
+    }
+    final sorted = hours.toList()..sort();
+    return sorted;
+  }
+
+  static List<int> freeHoursFor(String roomId, DateTime day) {
+    final busy = busyHoursFor(roomId, day);
+    return [
+      for (var h = openHour; h < closeHour; h++)
+        if (!busy.contains(h)) h,
+    ];
+  }
+}
+
+/// Shows the next few days of free/busy hours for a room (mock data).
+class RoomAvailabilityPreview extends StatelessWidget {
+  const RoomAvailabilityPreview({super.key, required this.roomId});
+
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final days = List.generate(4, (i) => DateTime(now.year, now.month, now.day + i));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const Text(
+          'Availability (next days)',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        ...days.map((day) {
+          final free = MockRoomSchedule.freeHoursFor(roomId, day);
+          final isToday = day.day == now.day && day.month == now.month;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 64,
+                  child: Text(
+                    isToday ? 'Today' : DateFormat('EEE d').format(day),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Expanded(
+                  child: free.isEmpty
+                      ? const Text('Fully booked', style: TextStyle(fontSize: 11, color: AppColors.error))
+                      : Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: free
+                              .map(
+                                (h) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.pastelMint,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '${h}h',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.success),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
 class RoomsCatalogScreen extends ConsumerWidget {
   const RoomsCatalogScreen({super.key});
 
@@ -229,6 +324,7 @@ class RoomsCatalogScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
                     Text('${s.capacity}: ${room.capacity} · ${room.priceHourLabel} · ${room.priceDayLabel}',
                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                    
                     if (room.amenities.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Wrap(
@@ -238,6 +334,7 @@ class RoomsCatalogScreen extends ConsumerWidget {
                             .toList(),
                       ),
                     ],
+                    RoomAvailabilityPreview(roomId: room.id),
                     if (room.available) ...[
                       const SizedBox(height: 10),
                       Row(
@@ -273,23 +370,50 @@ Future<void> _book(BuildContext context, WidgetRef ref, String roomId, String bi
     final s = S.of(context);
     final userId = ref.read(authProvider).user?.id;
     if (userId == null) return;
+
     final now = DateTime.now();
-    final end = billing == 'day'
-        ? now.add(const Duration(days: 1))
-        : now.add(const Duration(hours: 2));
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 60)),
+    );
+    if (pickedDate == null || !context.mounted) return;
+
+    DateTime startAt;
+    DateTime endAt;
+
+    if (billing == 'day') {
+      // Full-day booking — use the room's opening hour.
+      startAt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, MockRoomSchedule.openHour);
+      endAt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, MockRoomSchedule.closeHour);
+    } else {
+      final freeHours = MockRoomSchedule.freeHoursFor(roomId, pickedDate);
+      final defaultHour = freeHours.isNotEmpty ? freeHours.first : MockRoomSchedule.openHour;
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay(hour: defaultHour, minute: 0),
+        helpText: 'Choose a start time',
+      );
+      if (pickedTime == null || !context.mounted) return;
+      startAt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+      endAt = startAt.add(const Duration(hours: 2));
+    }
+
     final booking = await ref.read(databaseProvider).bookRoom(
           roomId: roomId,
           userId: userId,
           billing: billing,
-          startAt: now,
-          endAt: end,
+          startAt: startAt,
+          endAt: endAt,
         );
     ref.invalidate(roomBookingsProvider);
     ref.invalidate(adminStatsProvider);
     if (!context.mounted) return;
+    final label = DateFormat('d MMM, HH:mm').format(startAt);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${s.roomBooked} · ${Money.format(booking.totalCents)}'),
+        content: Text('${s.roomBooked} · $label · ${Money.format(booking.totalCents)}'),
         backgroundColor: AppColors.success,
       ),
     );
@@ -345,22 +469,49 @@ class PrintCatalogScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _order(BuildContext context, WidgetRef ref, String serviceId) async {
+Future<void> _order(BuildContext context, WidgetRef ref, String serviceId) async {
     final s = S.of(context);
     final userId = ref.read(authProvider).user?.id;
     if (userId == null) return;
+
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 30)),
+      helpText: 'When should the order be ready?',
+    );
+    if (pickedDate == null || !context.mounted) return;
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 10, minute: 0),
+      helpText: 'Choose a pickup time',
+    );
+    if (pickedTime == null || !context.mounted) return;
+
+    final scheduledAt = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
     final order = await ref.read(databaseProvider).createPrintOrder(
           serviceId: serviceId,
           userId: userId,
           quantity: 1,
           notes: 'Commande demo hub',
+          scheduledAt: scheduledAt,
         );
     ref.invalidate(printOrdersProvider);
     ref.invalidate(adminStatsProvider);
     if (!context.mounted) return;
+    final label = DateFormat('d MMM, HH:mm').format(scheduledAt);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${s.printOrdered} · ${Money.format(order.totalCents)}'),
+        content: Text('${s.printOrdered} · $label · ${Money.format(order.totalCents)}'),
         backgroundColor: AppColors.success,
       ),
     );

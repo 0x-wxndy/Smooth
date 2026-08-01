@@ -15,23 +15,25 @@ class PortfolioItem {
 
 
 List<PortfolioItem> mockPortfolioItems(String userId) {
-  final seedBase = userId.hashCode.abs();
   const titles = [
     'Brand identity refresh',
     'Mobile app UI kit',
     'Landing page design',
-    'Event poster series',
     'Dashboard redesign',
-    'Icon & illustration set',
   ];
-  const tags = ['Branding', 'UI/UX', 'Web', 'Print', 'Product', 'Illustration'];
+  const tags = ['Branding', 'UI/UX', 'Web', 'Product'];
+  const images = [
+    'assets/portfolio/P1.jpg',
+    'assets/portfolio/P2.jpg',
+    'assets/portfolio/P3.jpg',
+    'assets/portfolio/P4.jpg',
+  ];
 
-  return List.generate(6, (i) {
-    final seed = seedBase + i * 37;
+  return List.generate(4, (i) {
     return PortfolioItem(
-      imageUrl: 'https://picsum.photos/seed/portfolio$seed/600/600',
-      title: titles[i % titles.length],
-      tag: tags[i % tags.length],
+      imageUrl: images[i],
+      title: titles[i],
+      tag: tags[i],
     );
   });
 }
@@ -72,13 +74,9 @@ class _PortfolioTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
+          Image.asset(
             item.imageUrl,
             fit: BoxFit.cover,
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return Container(color: AppColors.surfaceVariant);
-            },
             errorBuilder: (_, __, ___) => Container(
               color: AppColors.surfaceVariant,
               child: const Icon(Icons.image_outlined, color: AppColors.textMuted),

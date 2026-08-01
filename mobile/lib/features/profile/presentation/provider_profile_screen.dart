@@ -13,6 +13,8 @@ import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/smooth_button.dart';
+import 'portfolio_gallery.dart';
+import 'profile_portfolio_section.dart' show userPublicationsProvider;
 import 'provider_actions.dart';
 import 'provider_feedback.dart';
 import 'provider_reviews_service.dart';
@@ -42,6 +44,7 @@ class ProviderProfileScreen extends ConsumerWidget {
     final coursesAsync = ref.watch(providerCoursesProvider(userId));
     final statsAsync = ref.watch(providerStatsProvider(userId));
     final reviewsAsync = ref.watch(providerReviewsListProvider(userId));
+    final pubsAsync = ref.watch(userPublicationsProvider(userId));
     final me = ref.watch(authProvider).user;
 
     return Scaffold(
@@ -137,6 +140,12 @@ class ProviderProfileScreen extends ConsumerWidget {
                         ),
                       ],
                       const SizedBox(height: 22),
+                      if (user.role == UserRole.teacher) ...[
+                        Text(s.portfolio, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                        const SizedBox(height: 10),
+                        PortfolioGallery(items: mockPortfolioItems(userId)),
+                        const SizedBox(height: 22),
+                      ],
                       Text(s.availableCourses, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                       const SizedBox(height: 10),
                       AsyncValueContent(
@@ -198,8 +207,33 @@ class ProviderProfileScreen extends ConsumerWidget {
                           );
                         },
                       ),
+                      const SizedBox(height: 22),
+                      Text(s.publications, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      const SizedBox(height: 10),
+                      AsyncValueContent(
+                        value: pubsAsync,
+                        builder: (pubs) {
+                          if (pubs.isEmpty) {
+                            return Text(s.noPublications, style: const TextStyle(color: AppColors.textSecondary));
+                          }
+                          return Column(
+                            children: pubs.take(4).map((p) {
+                              return Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(p.body, style: const TextStyle(fontSize: 13, height: 1.35)),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
                       if (canInteract) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         SmoothButton(
                           label: s.reportUser,
                           variant: SmoothButtonVariant.outline,

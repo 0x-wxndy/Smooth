@@ -513,6 +513,10 @@ class _FreelancersSection extends ConsumerWidget {
                     Expanded(
                       child: Text(s.featuredFreelancers, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                     ),
+                    TextButton(
+                      onPressed: () => context.push('/providers'),
+                      child: Text(s.seeAll, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),

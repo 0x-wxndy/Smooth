@@ -37,23 +37,12 @@ List<ShellNavItem> navItemsForRole(UserRole role) {
           selectedIcon: Icons.menu_book,
           labelBuilder: (s) => s.courses,
         ),
+        // Market now bundles Hub facilities + Opportunités, same as the client experience.
         ShellNavItem(
           path: '/market',
           icon: Icons.storefront_outlined,
           selectedIcon: Icons.storefront,
           labelBuilder: (s) => s.market,
-        ),
-        ShellNavItem(
-          path: '/hub',
-          icon: Icons.apartment_outlined,
-          selectedIcon: Icons.apartment,
-          labelBuilder: (s) => s.hub,
-        ),
-        ShellNavItem(
-          path: '/jobs',
-          icon: Icons.work_outline,
-          selectedIcon: Icons.work,
-          labelBuilder: (s) => s.opportunities,
         ),
         ShellNavItem(
           path: '/messages',

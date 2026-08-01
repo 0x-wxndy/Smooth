@@ -11,6 +11,7 @@ import '../../../shared/models/marketplace_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/smooth_components.dart';
+import '../../../shared/models/user_model.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -36,10 +37,15 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   void _ensureWelcome() {
     if (_welcomeReady) return;
     final s = S.of(context);
-    final name = ref.read(authProvider).user?.displayName;
+    final user = ref.read(authProvider).user;
+    final name = user?.displayName;
+    final isCreator = user?.role == UserRole.teacher || user?.role == UserRole.client;
+    final welcome = isCreator
+        ? (name != null ? s.aiWelcomeCreatorName(name.split(' ').first) : s.aiWelcomeCreator)
+        : (name != null ? s.aiWelcome(name.split(' ').first) : s.aiWelcomeGuest);
     _messages.add(
       ChatMessage(
-        content: name != null ? s.aiWelcome(name.split(' ').first) : s.aiWelcomeGuest,
+        content: welcome,
         isUser: false,
         timestamp: DateTime.now(),
       ),
@@ -173,9 +179,37 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
+  bool _isCreatorRole() {
+  final role = ref.read(authProvider).user?.role;
+  return role == UserRole.teacher || role == UserRole.client;
+}
+
   String _mockReply(String input) {
     final s = S.of(context);
     final lower = input.toLowerCase();
+
+    if (_isCreatorRole()) {
+      if (lower.contains('course') || lower.contains('idée') || lower.contains('idea') || lower.contains('فكرة')) {
+        return s.aiReplyCourseIdea;
+      }
+      if (lower.contains('price') || lower.contains('pricing') || lower.contains('tarif') || lower.contains('سعّر') || lower.contains('prix')) {
+        return s.aiReplyPricing;
+      }
+      if (lower.contains('marketing') || lower.contains('promo') || lower.contains('post') || lower.contains('تسويقي')) {
+        return s.aiReplyMarketing;
+      }
+      if (lower.contains('portfolio') || lower.contains('معرض')) {
+        return s.aiReplyPortfolioTip;
+      }
+      if (lower.contains('career') || lower.contains('carrière') || lower.contains('job') || lower.contains('recruit')) {
+        return s.aiReplyCareer;
+      }
+      if (lower.contains('coin') || lower.contains('game') || lower.contains('pièce') || lower.contains('jeton') || lower.contains('token')) {
+        return s.aiReplyCoins;
+      }
+      return s.aiReplyCreatorDefault;
+    }
+
     if (lower.contains('plan') || lower.contains('étude') || lower.contains('study')) {
       return s.aiReplyStudyPlan;
     }
@@ -310,13 +344,21 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Row(
-                children: [
-                  _QuickChip(s.aiChipStudyPlan, () => _send(s.aiPromptStudyPlan)),
-                  _QuickChip(s.aiChipQuiz, () => _send(s.aiPromptQuiz)),
-                  _QuickChip(s.aiChipCoins, () => _send(s.aiPromptCoins)),
-                  _QuickChip(s.aiChipFlutter, () => _send(s.aiChipFlutter)),
-                  _QuickChip(s.aiChipCareer, () => _send(s.aiChipCareer)),
-                ],
+                children: _isCreatorRole()
+                    ? [
+                        _QuickChip(s.aiChipCourseIdea, () => _send(s.aiPromptCourseIdea)),
+                        _QuickChip(s.aiChipPricing, () => _send(s.aiPromptPricing)),
+                        _QuickChip(s.aiChipMarketing, () => _send(s.aiPromptMarketing)),
+                        _QuickChip(s.aiChipPortfolio, () => _send(s.aiPromptPortfolio)),
+                        _QuickChip(s.aiChipCareer, () => _send(s.aiChipCareer)),
+                      ]
+                    : [
+                        _QuickChip(s.aiChipStudyPlan, () => _send(s.aiPromptStudyPlan)),
+                        _QuickChip(s.aiChipQuiz, () => _send(s.aiPromptQuiz)),
+                        _QuickChip(s.aiChipCoins, () => _send(s.aiPromptCoins)),
+                        _QuickChip(s.aiChipFlutter, () => _send(s.aiChipFlutter)),
+                        _QuickChip(s.aiChipCareer, () => _send(s.aiChipCareer)),
+                      ],
               ),
             ),
           Material(

@@ -8,9 +8,10 @@ import '../../../core/utils/role_utils.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
-import 'subscription_section.dart';
 import 'profile_library_section.dart';
 import 'profile_portfolio_section.dart';
+import '../../../shared/widgets/share_sheet.dart';
+import '../../../shared/widgets/smooth_components.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
@@ -40,6 +41,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: const AiAssistantFab(),
       body: AsyncValueContent(
         value: statsAsync,
         builder: (stats) => Column(
@@ -75,7 +77,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.ios_share_rounded, size: 22),
-                      onPressed: () {},
+                      onPressed: () => showShareSheet(context),
                     ),
                     IconButton(
                       icon: const Icon(Icons.settings_outlined, size: 22),
@@ -281,43 +283,49 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
+            child: Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.public, color: AppColors.accentPurple, size: 22),
-                  const SizedBox(width: 8),
-                  Text(s.moments, style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const Spacer(),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Image.network(
-                      AppAssets.learningDesk,
-                      width: 36,
-                      height: 28,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 36,
-                        height: 28,
-                        color: AppColors.surfaceVariant,
+                onTap: user == null ? null : () => _showMomentsSheet(context, ref, user.id),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.public, color: AppColors.accentPurple, size: 22),
+                      const SizedBox(width: 8),
+                      Text(s.moments, style: const TextStyle(fontWeight: FontWeight.w800)),
+                      const Spacer(),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.network(
+                          AppAssets.learningDesk,
+                          width: 36,
+                          height: 28,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 36,
+                            height: 28,
+                            color: AppColors.surfaceVariant,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Text(
+                        user == null
+                            ? '0'
+                            : ref.watch(userPublicationsProvider(user.id)).maybeWhen(
+                                  data: (pubs) => '${pubs.length}',
+                                  orElse: () => '0',
+                                ),
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    user == null
-                        ? '0'
-                        : ref.watch(userPublicationsProvider(user.id)).maybeWhen(
-                              data: (pubs) => '${pubs.length}',
-                              orElse: () => '0',
-                            ),
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -332,12 +340,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             // ── Enrolled / posted courses & services ──
             if (user != null) ProfileLibrarySection(role: user.role),
 
-            const SizedBox(height: 18),
-
-            if (user != null && user.role != UserRole.client) ...[
-              const SubscriptionSection(),
-              const SizedBox(height: 18),
-            ],
+      
 
             // ── Learn Hub grid ──
 
@@ -470,3 +473,103 @@ class _HubCat extends StatelessWidget {
   }
 }
 
+Future<void> _showMomentsSheet(BuildContext context, WidgetRef ref, String userId) async {
+  final s = S.of(context);
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) {
+      return DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        builder: (_, controller) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(s.moments, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final pubsAsync = ref.watch(userPublicationsProvider(userId));
+                      return pubsAsync.when(
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (e, _) => Center(child: Text('Error: $e')),
+                        data: (pubs) {
+                          if (pubs.isEmpty) {
+                            return Center(
+                              child: Text(s.noPublications, style: const TextStyle(color: AppColors.textSecondary)),
+                            );
+                          }
+                          return ListView.separated(
+                            controller: controller,
+                            itemCount: pubs.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            itemBuilder: (_, i) {
+                              final p = pubs[i];
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(p.body, style: const TextStyle(fontSize: 13, height: 1.35)),
+                                    if (p.hashtags.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: p.hashtags
+                                            .map(
+                                              (h) => Text(
+                                                h.startsWith('#') ? h : '#$h',
+                                                style: const TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}

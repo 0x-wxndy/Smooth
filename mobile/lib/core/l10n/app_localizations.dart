@@ -147,6 +147,21 @@ class S {
   String get aiReplyQuiz => t('aiReplyQuiz');
   String get aiReplyCareer => t('aiReplyCareer');
   String get aiReplyDefault => t('aiReplyDefault');
+  String get aiWelcomeCreator => t('aiWelcomeCreator');
+  String aiWelcomeCreatorName(String name) => t('aiWelcomeCreatorName').replaceAll('{name}', name);
+  String get aiChipCourseIdea => t('aiChipCourseIdea');
+  String get aiChipPricing => t('aiChipPricing');
+  String get aiChipMarketing => t('aiChipMarketing');
+  String get aiChipPortfolio => t('aiChipPortfolio');
+  String get aiPromptCourseIdea => t('aiPromptCourseIdea');
+  String get aiPromptPricing => t('aiPromptPricing');
+  String get aiPromptMarketing => t('aiPromptMarketing');
+  String get aiPromptPortfolio => t('aiPromptPortfolio');
+  String get aiReplyCourseIdea => t('aiReplyCourseIdea');
+  String get aiReplyPricing => t('aiReplyPricing');
+  String get aiReplyMarketing => t('aiReplyMarketing');
+  String get aiReplyPortfolioTip => t('aiReplyPortfolioTip');
+  String get aiReplyCreatorDefault => t('aiReplyCreatorDefault');
   String get games => t('games');
   String get exploreMarket => t('exploreMarket');
   String get streak => t('streak');
@@ -283,6 +298,15 @@ class S {
   String get completeLesson => t('completeLesson');
   String get lessonDone => t('lessonDone');
   String get earnRewards => t('earnRewards');
+  String get notifications => t('notifications');
+  String get privacySecurity => t('privacySecurity');
+  String get appearance => t('appearance');
+  String get helpSupport => t('helpSupport');
+  String get aboutApp => t('aboutApp');
+  String get shareApp => t('shareApp');
+  String get shareWithOthers => t('shareWithOthers');
+  String get copyLink => t('copyLink');
+  String get linkCopied => t('linkCopied');
 
   String tokensUnlocked(int n) => t('tokensUnlocked').replaceAll('{n}', '$n');
   String rewardSnack(int coins, int xp) =>
@@ -850,6 +874,65 @@ class S {
       'en': 'Based on your goals, pick one skill area and complete a beginner course this week. Ask me for a study plan, a quiz, or tips on Flutter, design, or earning coins.',
       'fr': 'Selon tes objectifs, choisis un domaine et termine un cours débutant cette semaine. Demande un plan, un quiz ou des conseils Flutter, design ou pièces.',
       'ar': 'حسب أهدافك، اختر مجالاً وأكمل دورة مبتدئة هذا الأسبوع. اطلب خطة دراسة أو اختباراً أو نصائح Flutter أو التصميم أو العملات.',
+    },
+    'aiWelcomeCreator': {
+      'en': 'Hi! I can help you plan courses, price your services, write marketing copy, or improve your portfolio.',
+      'fr': 'Salut ! Je peux t’aider à planifier des cours, fixer tes tarifs, rédiger du contenu marketing, ou améliorer ton portfolio.',
+      'ar': 'مرحباً! أستطيع مساعدتك في تخطيط الدورات، تسعير خدماتك، كتابة محتوى تسويقي، أو تحسين معرض أعمالك.',
+    },
+    'aiWelcomeCreatorName': {
+      'en': 'Hi {name}! I can help you plan courses, price your services, write marketing copy, or improve your portfolio.',
+      'fr': 'Salut {name} ! Je peux t’aider à planifier des cours, fixer tes tarifs, rédiger du contenu marketing, ou améliorer ton portfolio.',
+      'ar': 'مرحباً {name}! أستطيع مساعدتك في تخطيط الدورات، تسعير خدماتك، كتابة محتوى تسويقي، أو تحسين معرض أعمالك.',
+    },
+    'aiChipCourseIdea': {'en': 'Course idea', 'fr': 'Idée de cours', 'ar': 'فكرة دورة'},
+    'aiChipPricing': {'en': 'Pricing help', 'fr': 'Aide tarifs', 'ar': 'مساعدة تسعير'},
+    'aiChipMarketing': {'en': 'Marketing copy', 'fr': 'Texte marketing', 'ar': 'نص تسويقي'},
+    'aiChipPortfolio': {'en': 'Portfolio tips', 'fr': 'Conseils portfolio', 'ar': 'نصائح للمعرض'},
+    'aiPromptCourseIdea': {
+      'en': 'Suggest a course idea based on my skills',
+      'fr': 'Suggère une idée de cours selon mes compétences',
+      'ar': 'اقترح فكرة دورة حسب مهاراتي',
+    },
+    'aiPromptPricing': {
+      'en': 'How should I price my service?',
+      'fr': 'Comment fixer le prix de mon service ?',
+      'ar': 'كيف أسعّر خدمتي؟',
+    },
+    'aiPromptMarketing': {
+      'en': 'Write a short promo post for my service',
+      'fr': 'Rédige un court post promo pour mon service',
+      'ar': 'اكتب منشوراً ترويجياً قصيراً لخدمتي',
+    },
+    'aiPromptPortfolio': {
+      'en': 'How can I improve my portfolio?',
+      'fr': 'Comment améliorer mon portfolio ?',
+      'ar': 'كيف أحسّن معرض أعمالي؟',
+    },
+    'aiReplyCourseIdea': {
+      'en': 'Look at what students are asking about in your niche, then package it as a short, focused course (3–5 lessons). Beginner-friendly + one hands-on project converts best.',
+      'fr': 'Repère ce que les apprenants demandent dans ta niche, puis crée un cours court et ciblé (3–5 leçons). Niveau débutant + un projet pratique convertit le mieux.',
+      'ar': 'راقب ما يسأل عنه المتعلمون في مجالك، ثم صمم دورة قصيرة ومركزة (3-5 دروس). مستوى مبتدئ مع مشروع عملي يحقق أفضل إقبال.',
+    },
+    'aiReplyPricing': {
+      'en': 'Check 3 similar listings on Samooth, price near the middle, and offer a lower "starter" tier. Raise prices once you have 5+ reviews above 4.5★.',
+      'fr': 'Compare 3 annonces similaires sur Samooth, place-toi au milieu, et propose un tarif "starter" plus bas. Augmente une fois 5+ avis au-dessus de 4.5★.',
+      'ar': 'قارن 3 إعلانات مشابهة على Samooth، سعّر في المنتصف، وقدّم باقة "بداية" أرخص. ارفع السعر بعد 5 تقييمات فما فوق بـ4.5★.',
+    },
+    'aiReplyMarketing': {
+      'en': '"Need [skill] done right? I help clients on Samooth Hub deliver [result] in [timeframe]. Book a session today." Keep it under 3 lines and add one concrete result.',
+      'fr': '« Besoin de [compétence] bien fait ? J’aide les clients sur Samooth Hub à obtenir [résultat] en [délai]. Réservez dès aujourd’hui. » Reste sous 3 lignes avec un résultat concret.',
+      'ar': '"تحتاج [مهارة] بإتقان؟ أساعد العملاء على Samooth Hub في تحقيق [نتيجة] خلال [مدة]. احجز اليوم." اجعله أقل من 3 أسطر مع نتيجة ملموسة.',
+    },
+    'aiReplyPortfolioTip': {
+      'en': 'Lead with your best 2 pieces, add a one-line result for each ("+30% signups"), and keep captions short. Recruiters skim — make the first 3 seconds count.',
+      'fr': 'Mets tes 2 meilleures réalisations en avant, ajoute un résultat en une ligne pour chacune, et garde les légendes courtes. Les recruteurs survolent — les 3 premières secondes comptent.',
+      'ar': 'ابدأ بأفضل عملين، أضف نتيجة بسطر واحد لكل منهما، واجعل الأوصاف قصيرة. المسؤولون يتصفحون بسرعة — اجعل أول 3 ثوانٍ مؤثرة.',
+    },
+    'aiReplyCreatorDefault': {
+      'en': 'Tell me if you want help with a course idea, pricing, marketing copy, or your portfolio — I can tailor advice to what you\'re building.',
+      'fr': 'Dis-moi si tu veux de l\'aide pour une idée de cours, un tarif, un texte marketing, ou ton portfolio — je peux adapter mes conseils.',
+      'ar': 'أخبرني إن كنت تريد مساعدة بفكرة دورة، تسعير، نص تسويقي، أو معرض أعمالك — يمكنني تخصيص النصيحة.',
     },
     'games': {'en': 'Games', 'fr': 'Jeux', 'ar': 'ألعاب'},
     'exploreMarket': {
@@ -1972,6 +2055,16 @@ class S {
       'fr': 'Annonces',
       'ar': 'الإعلانات',
     },
+
+    'notifications': {'en': 'Notifications', 'fr': 'Notifications', 'ar': 'الإشعارات'},
+    'privacySecurity': {'en': 'Privacy & Security', 'fr': 'Confidentialité & Sécurité', 'ar': 'الخصوصية والأمان'},
+    'appearance': {'en': 'Appearance', 'fr': 'Apparence', 'ar': 'المظهر'},
+    'helpSupport': {'en': 'Help & Support', 'fr': 'Aide & Support', 'ar': 'المساعدة والدعم'},
+    'aboutApp': {'en': 'About Samooth', 'fr': 'À propos de Samooth', 'ar': 'حول Samooth'},
+    'shareApp': {'en': 'Share app', 'fr': 'Partager l’app', 'ar': 'مشاركة التطبيق'},
+    'shareWithOthers': {'en': 'Share with others', 'fr': 'Partager avec d’autres', 'ar': 'شارك مع الآخرين'},
+    'copyLink': {'en': 'Copy link', 'fr': 'Copier le lien', 'ar': 'نسخ الرابط'},
+    'linkCopied': {'en': 'Link copied to clipboard', 'fr': 'Lien copié', 'ar': 'تم نسخ الرابط'},
   };
 
 }

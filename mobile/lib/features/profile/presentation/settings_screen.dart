@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/smooth_button.dart';
+import 'subscription_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -22,6 +23,10 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (user != null && user.role != UserRole.client) ...[
+            const SubscriptionSection(),
+            const SizedBox(height: 16),
+          ],
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
@@ -86,6 +91,8 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          _PlaceholderSettingsCard(s: s),
           const SizedBox(height: 16),
           SmoothButton(
             label: s.signOut,
@@ -185,6 +192,90 @@ class _LangChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+class _PlaceholderSettingsCard extends StatelessWidget {
+  const _PlaceholderSettingsCard({required this.s});
+
+  final S s;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _PlaceholderTile(
+            icon: Icons.notifications_outlined,
+            iconBg: AppColors.pastelSky,
+            iconColor: AppColors.accentBlue,
+            title: s.notifications,
+          ),
+          const Divider(height: 1),
+          _PlaceholderTile(
+            icon: Icons.lock_outline_rounded,
+            iconBg: AppColors.pastelLavender,
+            iconColor: AppColors.accentPurple,
+            title: s.privacySecurity,
+          ),
+          const Divider(height: 1),
+          _PlaceholderTile(
+            icon: Icons.dark_mode_outlined,
+            iconBg: AppColors.pastelMint,
+            iconColor: AppColors.accentGreen,
+            title: s.appearance,
+          ),
+          const Divider(height: 1),
+          _PlaceholderTile(
+            icon: Icons.help_outline_rounded,
+            iconBg: AppColors.pastelPeach,
+            iconColor: AppColors.accentOrange,
+            title: s.helpSupport,
+          ),
+          const Divider(height: 1),
+          _PlaceholderTile(
+            icon: Icons.info_outline_rounded,
+            iconBg: AppColors.surfaceVariant,
+            iconColor: AppColors.textSecondary,
+            title: s.aboutApp,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlaceholderTile extends StatelessWidget {
+  const _PlaceholderTile({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+  });
+
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: iconColor, size: 20),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+      onTap: null,
     );
   }
 }

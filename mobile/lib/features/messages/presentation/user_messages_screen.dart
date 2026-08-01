@@ -262,22 +262,58 @@ class _MessageInboxTile extends StatelessWidget {
   }
 }
 
-class _MessageThreadView extends StatelessWidget {
+class _MessageThreadView extends ConsumerStatefulWidget {
   const _MessageThreadView({required this.message, required this.onBack});
 
   final ContactMessage message;
   final VoidCallback onBack;
 
   @override
+  ConsumerState<_MessageThreadView> createState() => _MessageThreadViewState();
+}
+
+class _MessageThreadViewState extends ConsumerState<_MessageThreadView> {
+  final _replyCtrl = TextEditingController();
+  late List<ContactMessage> _thread = [widget.message];
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _replyCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _replyCtrl.text.trim();
+    if (text.isEmpty || _sending) return;
+    final user = ref.read(authProvider).user;
+    setState(() => _sending = true);
+    final sent = await ref.read(databaseProvider).createContactMessage(
+          userId: user?.id,
+          name: user?.displayName ?? widget.message.name,
+          email: user?.email ?? widget.message.email,
+          subject: widget.message.subject,
+          body: text,
+        );
+    ref.invalidate(userMessagesProvider);
+    if (!mounted) return;
+    setState(() {
+      _thread = [..._thread, sent];
+      _replyCtrl.clear();
+      _sending = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = S.of(context);
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(message.subject, style: const TextStyle(fontSize: 16)),
+            Text(widget.message.subject, style: const TextStyle(fontSize: 16)),
             Text(
               AppConfig.hubEmail,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white70),
@@ -285,24 +321,82 @@ class _MessageThreadView extends StatelessWidget {
           ],
         ),
       ),
-      body: ColoredBox(
-        color: const Color(0xFFF0F2F5),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _ChatBubble(
-              sender: 'Samooth Hub',
-              body: s.contactHubWelcome,
-              incoming: true,
+      body: Column(
+        children: [
+          Expanded(
+            child: ColoredBox(
+              color: const Color(0xFFF0F2F5),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _ChatBubble(
+                    sender: 'Samooth Hub',
+                    body: s.contactHubWelcome,
+                    incoming: true,
+                  ),
+                  const SizedBox(height: 8),
+                  for (final m in _thread) ...[
+                    _ChatBubble(
+                      sender: m.name,
+                      body: m == _thread.first ? '${m.subject}\n\n${m.body}' : m.body,
+                      incoming: false,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            _ChatBubble(
-              sender: message.name,
-              body: '${message.subject}\n\n${message.body}',
-              incoming: false,
+          ),
+          Material(
+            elevation: 8,
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _replyCtrl,
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _send(),
+                        decoration: InputDecoration(
+                          hintText: s.typeYourMessage,
+                          filled: true,
+                          fillColor: AppColors.surfaceVariant,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton.filled(
+                      onPressed: _sending ? null : _send,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.send_rounded),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -54,34 +54,36 @@ class ProfileLibrarySection extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(s.myCourses, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            const SizedBox(height: 8),
-            AsyncValueContent(
-              value: coursesAsync,
-              builder: (courses) {
-                if (courses.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      showOwned ? s.noCoursesYet : s.noEnrolledCourses,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    ),
+            if (role != UserRole.client) ...[
+              Text(s.myCourses, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(height: 8),
+              AsyncValueContent(
+                value: coursesAsync,
+                builder: (courses) {
+                  if (courses.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        showOwned ? s.noCoursesYet : s.noEnrolledCourses,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: courses
+                        .take(3)
+                        .map(
+                          (course) => CourseCard(
+                            course: course,
+                            onTap: () => context.push('/courses/${course.id}'),
+                          ),
+                        )
+                        .toList(),
                   );
-                }
-                return Column(
-                  children: courses
-                      .take(3)
-                      .map(
-                        (course) => CourseCard(
-                          course: course,
-                          onTap: () => context.push('/courses/${course.id}'),
-                        ),
-                      )
-                      .toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(s.myServices, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 8),
             AsyncValueContent(

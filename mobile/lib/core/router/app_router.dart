@@ -32,7 +32,7 @@ import '../../features/payments/payment_models.dart';
 import '../../features/messages/presentation/user_messages_screen.dart';
 import '../../features/admin/presentation/admin_screens.dart';
 import '../../features/hub/presentation/hub_screens.dart';
-import '../../features/marketplace/presentation/marketplace_screen.dart';
+import '../../features/marketplace/presentation/all_providers_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(

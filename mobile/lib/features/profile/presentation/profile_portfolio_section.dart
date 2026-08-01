@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/publication_model.dart';
@@ -10,6 +9,9 @@ import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import 'portfolio_gallery.dart';
+import 'dart:io' show File;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'publication_media_helper.dart';
 
 final userPublicationsProvider = FutureProvider.family<List<Publication>, String>((ref, userId) async {
   return ref.watch(databaseProvider).getPublications(authorId: userId);
@@ -184,6 +186,8 @@ Future<void> showNewPublicationSheet({
   final bodyCtrl = TextEditingController();
   final tagsCtrl = TextEditingController();
   var saving = false;
+  var picking = false;
+  List<String> imagePaths = [];
 
   await showModalBottomSheet<void>(
     context: context,
@@ -224,6 +228,59 @@ Future<void> showNewPublicationSheet({
                     border: const OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: picking
+                          ? null
+                          : () async {
+                              setState(() => picking = true);
+                              final picked = await PublicationMediaHelper.pickImages();
+                              setState(() {
+                                imagePaths = [...imagePaths, ...picked];
+                                picking = false;
+                              });
+                            },
+                      icon: picking
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.image_outlined, size: 18),
+                      label: Text('${imagePaths.length} photo(s)'),
+                    ),
+                  ],
+                ),
+                if (imagePaths.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 64,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: imagePaths.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) => Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: kIsWeb
+                                ? Container(width: 64, height: 64, color: AppColors.surfaceVariant)
+                                : Image.file(File(imagePaths[i]), width: 64, height: 64, fit: BoxFit.cover),
+                          ),
+                          Positioned(
+                            top: -6,
+                            right: -6,
+                            child: IconButton(
+                              icon: const Icon(Icons.cancel, size: 18, color: AppColors.error),
+                              onPressed: () => setState(() => imagePaths = [...imagePaths]..removeAt(i)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+
+
+
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: saving || bodyCtrl.text.trim().isEmpty
@@ -239,6 +296,7 @@ Future<void> showNewPublicationSheet({
                                 authorId: userId,
                                 body: bodyCtrl.text.trim(),
                                 hashtags: tags,
+                                imagePaths: imagePaths,
                                 kind: defaultKind,
                               );
                           ref.invalidate(userPublicationsProvider(userId));
@@ -327,6 +385,27 @@ class _PublicationTile extends StatelessWidget {
               ),
             ),
           Text(publication.body, style: const TextStyle(fontSize: 13, height: 1.35)),
+          if (publication.imagePaths.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 90,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: publication.imagePaths.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) => ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.file(
+                    File(publication.imagePaths[i]),
+                    width: 90,
+                    height: 90,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(width: 90, height: 90, color: AppColors.surfaceVariant),
+                  ),
+                ),
+              ),
+            ),
+          ],
           if (publication.hashtags.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(

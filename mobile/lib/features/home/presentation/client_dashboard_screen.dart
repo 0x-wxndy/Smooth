@@ -10,7 +10,7 @@ import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/hub_hero.dart';
 import '../../../shared/widgets/back_to_menu_bar.dart';
-import '../../../shared/widgets/smooth_components.dart';
+import '../../../shared/widgets/dashboard_section.dart';
 
 class ClientDashboardTab extends ConsumerWidget {
   const ClientDashboardTab({super.key});
@@ -34,7 +34,7 @@ class ClientDashboardTab extends ConsumerWidget {
               heroTitle: s.clientHeroTitle,
               heroSubtitle: s.clientHeroSubtitle,
               coverUrl: AppAssets.heroWorkspace,
-              coverHeight: 330,
+              coverHeight: 272,
               primaryCta: HubCta(
                 label: s.browseFreelancers,
                 icon: Icons.person_search,
@@ -54,82 +54,76 @@ class ClientDashboardTab extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.25)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    DashboardSectionCard(
+                      title: s.clientMarketTitle,
+                      subtitle: s.clientMarketSub,
+                      icon: Icons.campaign_outlined,
+                      iconColor: AppColors.accentGreen,
+                      child: Row(
                         children: [
-                          Text(s.clientMarketTitle, style: const TextStyle(fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 6),
-                          Text(
-                            s.clientMarketSub,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.35),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                             Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  final userId = user?.id;
-                                  if (userId == null) return;
-                                  showNewPublicationSheet(
-                                    context: context,
-                                    ref: ref,
-                                    userId: userId,
-                                    defaultKind: 'offer',
-                                  );
-                                },
-                                child: Text(s.postAJob),
-                              ),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                final userId = user?.id;
+                                if (userId == null) return;
+                                showNewPublicationSheet(
+                                  context: context,
+                                  ref: ref,
+                                  userId: userId,
+                                  defaultKind: 'offer',
+                                );
+                              },
+                              child: Text(s.postAJob),
                             ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: FilledButton(
-                                  onPressed: () => context.go('/market'),
-                                  style: FilledButton.styleFrom(backgroundColor: AppColors.accentGreen),
-                                  child: Text(s.hireTalent),
-                                ),
-                              ),
-                            ],
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => context.go('/market'),
+                              style: FilledButton.styleFrom(backgroundColor: AppColors.accentGreen),
+                              child: Text(s.hireTalent),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    SectionHeader(title: s.topServices),
-                    AsyncValueContent(
-                      value: servicesAsync,
-                      builder: (services) => Column(
-                        children: services
-                            .take(4)
-                            .map(
-                              (svc) => ServiceCard(
-                                service: svc,
-                                onTap: () => context.push('/services/${svc.id}'),
-                              ),
-                            )
-                            .toList(),
+                    const SizedBox(height: 16),
+                    DashboardSectionCard(
+                      title: s.topServices,
+                      icon: Icons.star_outline_rounded,
+                      iconColor: AppColors.accentOrange,
+                      child: AsyncValueContent(
+                        value: servicesAsync,
+                        builder: (services) => Column(
+                          children: services
+                              .take(4)
+                              .map(
+                                (svc) => ServiceCard(
+                                  service: svc,
+                                  onTap: () => context.push('/services/${svc.id}'),
+                                ),
+                              )
+                              .toList(),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SectionHeader(
+                    const SizedBox(height: 16),
+                    DashboardSectionCard(
                       title: s.jobs,
-                      actionLabel: s.seeAll,
-                      onAction: () => context.go('/jobs'),
-                    ),
-                    AsyncValueContent(
-                      value: jobsAsync,
-                      builder: (jobs) => Column(
-                        children: jobs
-                            .take(2)
-                            .map((j) => JobCard(job: j, onTap: () => context.go('/jobs')))
-                            .toList(),
+                      icon: Icons.work_outline_rounded,
+                      iconColor: AppColors.accentBlue,
+                      action: TextButton(
+                        onPressed: () => context.go('/jobs'),
+                        child: Text(s.seeAll, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                      ),
+                      child: AsyncValueContent(
+                        value: jobsAsync,
+                        builder: (jobs) => Column(
+                          children: jobs
+                              .take(2)
+                              .map((j) => JobCard(job: j, onTap: () => context.go('/jobs')))
+                              .toList(),
+                        ),
                       ),
                     ),
                   ],

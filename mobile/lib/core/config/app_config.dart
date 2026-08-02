@@ -2,7 +2,7 @@ class AppConfig {
   static const appName = 'Samooth';
   static const aiDailyLimit = 5;
   static const dbName = 'smooth.db';
-  static const dbVersion = 9;
+  static const dbVersion = 10;
 
   /// Institution contact (shown to users / handled by admin).
   static const hubPhone = '+213 555 12 34 56';

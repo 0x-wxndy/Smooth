@@ -4,14 +4,12 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/providers/app_providers.dart';
-import 'onboarding_service.dart';
 import 'onboarding_tips.dart';
 
 Future<void> showFirstVisitOnboarding({
   required BuildContext context,
   required WidgetRef ref,
   required UserRole role,
-  required String userId,
 }) async {
   final s = S.of(context);
   final tips = onboardingTipsForRole(role, s);
@@ -25,8 +23,7 @@ Future<void> showFirstVisitOnboarding({
     builder: (ctx) => _OnboardingSheet(
       tips: tips,
       userName: ref.read(authProvider).user?.displayName,
-      onComplete: () async {
-        await ref.read(onboardingServiceProvider).markOnboardingSeen(userId);
+      onComplete: () {
         if (ctx.mounted) Navigator.of(ctx).pop();
       },
     ),

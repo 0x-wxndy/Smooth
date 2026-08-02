@@ -30,6 +30,7 @@ class EnrolledStudent {
     required this.courseId,
     required this.courseTitle,
     required this.progressPercent,
+    this.avatarUrl,
   });
 
   final String userId;
@@ -37,6 +38,7 @@ class EnrolledStudent {
   final String courseId;
   final String courseTitle;
   final double progressPercent;
+  final String? avatarUrl;
 }
 
 class TeacherEnrollmentStats {

@@ -274,6 +274,35 @@ abstract final class DatabaseSchema {
     )
   ''';
 
+  static const paymentLogs = '''
+    CREATE TABLE payment_logs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      user_name TEXT,
+      purpose TEXT NOT NULL,
+      title TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      gateway TEXT NOT NULL,
+      status TEXT NOT NULL,
+      reference TEXT,
+      item_id TEXT,
+      created_at TEXT NOT NULL
+    )
+  ''';
+
+  static const adminActivityLogs = '''
+    CREATE TABLE admin_activity_logs (
+      id TEXT PRIMARY KEY,
+      actor_id TEXT,
+      actor_name TEXT,
+      action TEXT NOT NULL,
+      target_type TEXT,
+      target_id TEXT,
+      details TEXT,
+      created_at TEXT NOT NULL
+    )
+  ''';
+
   static List<String> get all => [
         users,
         wallets,
@@ -295,6 +324,8 @@ abstract final class DatabaseSchema {
         userReports,
         contactMessages,
         publications,
+        paymentLogs,
+        adminActivityLogs,
         meta,
       ];
 }

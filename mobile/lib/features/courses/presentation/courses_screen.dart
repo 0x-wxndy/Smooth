@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/money.dart';
 import '../../../features/payments/payment_models.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/smooth_components.dart';
@@ -28,6 +29,7 @@ class _LearnTabState extends ConsumerState<LearnTab> {
     final coursesAsync = ref.watch(coursesProvider);
     final walletAsync = ref.watch(gamificationProvider);
     final quotaAsync = ref.watch(aiQuotaProvider);
+    final plan = ref.watch(subscriptionProvider);
     final gamesAsync = ref.watch(gamesProvider);
     final filters = [s.filterAll, s.free, s.filterPremium];
 
@@ -158,6 +160,45 @@ class _LearnTabState extends ConsumerState<LearnTab> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              if (plan.hasWebinars) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.accentPurple.withValues(alpha: 0.15),
+                        const Color(0xFFD97706).withValues(alpha: 0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.accentPurple.withValues(alpha: 0.25)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.live_tv_rounded, color: AppColors.accentPurple),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              s.exclusiveWebinarsTitle,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.exclusiveWebinarsBody,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.35),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Games
               SectionHeader(

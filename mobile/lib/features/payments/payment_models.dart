@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../shared/models/subscription_plan.dart';
 
 /// What the mock payment unlocks after success.
-enum PaymentPurpose { course, service, aiTokens }
+enum PaymentPurpose { course, service, aiTokens, subscription, hubRoom, hubPrint }
 
 enum PaymentGateway {
   edahabia,
@@ -19,6 +20,13 @@ class PaymentCheckoutArgs {
     this.itemId,
     this.aiTokens,
     this.coinCost,
+    this.subscriptionPlan,
+    this.hubBilling,
+    this.hubStartAt,
+    this.hubEndAt,
+    this.printScheduledAt,
+    this.printNotes,
+    this.printQuantity = 1,
   });
 
   final String title;
@@ -28,6 +36,13 @@ class PaymentCheckoutArgs {
   final String? itemId;
   final int? aiTokens;
   final int? coinCost;
+  final SubscriptionPlan? subscriptionPlan;
+  final String? hubBilling;
+  final DateTime? hubStartAt;
+  final DateTime? hubEndAt;
+  final DateTime? printScheduledAt;
+  final String? printNotes;
+  final int printQuantity;
 
   bool get canPayWithCoins => coinCost != null && coinCost! > 0;
 }
@@ -43,6 +58,7 @@ class PaymentResultArgs {
     this.itemId,
     this.aiTokens,
     this.transactionRef,
+    this.subscriptionPlan,
   });
 
   final bool success;
@@ -54,6 +70,7 @@ class PaymentResultArgs {
   final String? itemId;
   final int? aiTokens;
   final String? transactionRef;
+  final SubscriptionPlan? subscriptionPlan;
 }
 
 extension PaymentGatewayX on PaymentGateway {

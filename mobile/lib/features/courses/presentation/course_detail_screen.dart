@@ -5,13 +5,16 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../features/payments/payment_models.dart';
 import '../../../shared/models/course_model.dart';
+import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/provider_name_link.dart';
 import '../../../shared/widgets/smooth_button.dart';
 import '../../profile/presentation/provider_actions.dart';
 import '../../profile/presentation/provider_profile_screen.dart';
+import '../../profile/presentation/provider_review_form.dart';
 import '../../../shared/widgets/smooth_components.dart';
 
 class CourseDetailScreen extends ConsumerWidget {
@@ -24,14 +27,19 @@ class CourseDetailScreen extends ConsumerWidget {
     final courseAsync = ref.watch(courseProvider(courseId));
     final modulesAsync = ref.watch(courseModulesProvider(courseId));
     final walletAsync = ref.watch(gamificationProvider);
+    final me = ref.watch(authProvider).user;
     final s = S.of(context);
 
     return AsyncValueContent(
       value: courseAsync,
       builder: (course) {
         if (course == null) {
-          return const Scaffold(body: Center(child: Text('Course not found')));
+          return Scaffold(body: Center(child: Text(s.courseNotFound)));
         }
+
+        final isOwner = me?.id == course.teacherId;
+        final canReview = course.teacherId != null &&
+            canLeaveProviderReview(me, providerId: course.teacherId!, providerRole: UserRole.teacher);
 
         return Scaffold(
           body: CustomScrollView(
@@ -80,7 +88,7 @@ class CourseDetailScreen extends ConsumerWidget {
                               providerId: course.teacherId,
                             ),
                           Text(
-                            '★ ${course.ratingAvg} · ${course.enrollmentCount} students',
+                            '★ ${course.ratingAvg} · ${s.totalEnrolled(course.enrollmentCount)}',
                             style: const TextStyle(color: AppColors.textSecondary),
                           ),
                         ],
@@ -140,7 +148,7 @@ class CourseDetailScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Text('Curriculum', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                      Text(s.curriculum, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                       const SizedBox(height: 12),
                       AsyncValueContent(
                         value: modulesAsync,
@@ -155,6 +163,14 @@ class CourseDetailScreen extends ConsumerWidget {
                               .toList(),
                         ),
                       ),
+                      if (canReview) ...[
+                        const SizedBox(height: 24),
+                        ProviderReviewForm(
+                          providerId: course.teacherId!,
+                          providerName: course.teacherName ?? 'Instructor',
+                          contextLabel: course.title,
+                        ),
+                      ],
                       const SizedBox(height: 100),
                     ],
                   ),
@@ -168,71 +184,95 @@ class CourseDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (course.teacherId != null) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              final teacherId = course.teacherId!;
-                              ref.read(providerProfileProvider(teacherId).future).then((user) {
-                                if (user != null && context.mounted) {
-                                  showContactProviderSheet(context: context, ref: ref, provider: user);
-                                }
-                              });
-                            },
-                            icon: const Icon(Icons.mail_outline_rounded, size: 18),
-                            label: Text(s.contactProvider),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => showLeaveReviewSheet(
-                              context: context,
-                              ref: ref,
-                              providerId: course.teacherId!,
-                              providerName: course.teacherName ?? 'Instructor',
-                              contextLabel: course.title,
-                            ),
-                            icon: const Icon(Icons.rate_review_outlined, size: 18),
-                            label: Text(s.leaveReview),
-                          ),
-                        ),
-                      ],
+                  if (isOwner) ...[
+                    SmoothButton(
+                      label: s.manageCourse,
+                      icon: Icons.people_outline,
+                      onPressed: () => context.push('/teacher/courses/$courseId'),
                     ),
-                    const SizedBox(height: 10),
-                  ],
-                  SmoothButton(
-                    label: course.isFree ? s.enrollFree : '${s.buy} ${course.priceLabel}',
-                    onPressed: () async {
-                      final userId = ref.read(authProvider).user?.id;
-                      if (userId == null) return;
-
-                      if (course.isFree) {
-                        await ref.read(databaseProvider).enrollCourse(userId, courseId);
-                        ref.invalidate(coursesProvider);
-                        ref.invalidate(courseProvider(courseId));
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Enrolled successfully!')),
-                          );
-                        }
-                        return;
-                      }
-
-                      context.push(
-                        '/checkout',
-                        extra: PaymentCheckoutArgs(
-                          title: course.title,
-                          subtitle: course.teacherName,
-                          amountCentimes: course.priceCents ?? 0,
-                          purpose: PaymentPurpose.course,
-                          itemId: courseId,
+                  ] else ...[
+                    if (course.teacherId != null) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            final teacherId = course.teacherId!;
+                            ref.read(providerProfileProvider(teacherId).future).then((user) {
+                              if (user != null && context.mounted) {
+                                showContactProviderSheet(context: context, ref: ref, provider: user);
+                              }
+                            });
+                          },
+                          icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                          label: Text(s.contactProvider),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    SmoothButton(
+                      label: _enrollLabel(course, ref, s),
+                      onPressed: () async {
+                        final userId = ref.read(authProvider).user?.id;
+                        if (userId == null) return;
+
+                        final plan = ref.read(subscriptionProvider);
+                        final alreadyEnrolled = course.progressPercent != null;
+
+                        if (!alreadyEnrolled) {
+                          final limit = plan.masterclassLimit;
+                          if (limit != null) {
+                            final count = await ref.read(databaseProvider).getEnrollmentCount(userId);
+                            if (count >= limit) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(s.masterclassLimitReached(limit)),
+                                    action: SnackBarAction(
+                                      label: s.upgradeSubscription,
+                                      onPressed: () => context.push('/profile/settings'),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                          }
+                        }
+
+                        if (course.isFree || plan.includesPaidCourses) {
+                          await ref.read(databaseProvider).enrollCourse(userId, courseId);
+                          ref.invalidate(coursesProvider);
+                          ref.invalidate(courseProvider(courseId));
+                          ref.invalidate(enrolledCoursesProvider);
+                          ref.invalidate(enrollmentCountProvider);
+                          ref.invalidate(teacherEnrollmentStatsProvider);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  plan.includesPaidCourses && !course.isFree
+                                      ? s.subscriptionCoversCourses
+                                      : s.enrolledSuccess,
+                                ),
+                              ),
+                            );
+                          }
+                          return;
+                        }
+
+                        context.push(
+                          '/checkout',
+                          extra: PaymentCheckoutArgs(
+                            title: course.title,
+                            subtitle: course.teacherName,
+                            amountCentimes: course.priceCents ?? 0,
+                            purpose: PaymentPurpose.course,
+                            itemId: courseId,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -241,6 +281,14 @@ class CourseDetailScreen extends ConsumerWidget {
       },
     );
   }
+}
+
+String _enrollLabel(Course course, WidgetRef ref, S s) {
+  if (course.progressPercent != null) return s.continueLearning;
+  if (course.isFree) return s.enrollFree;
+  final plan = ref.watch(subscriptionProvider);
+  if (plan.includesPaidCourses) return s.enrollIncluded;
+  return '${s.buy} ${course.priceLabel}';
 }
 
 class _InfoChip extends StatelessWidget {

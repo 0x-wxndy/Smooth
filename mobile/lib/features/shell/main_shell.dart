@@ -5,7 +5,6 @@ import '../../core/l10n/app_localizations.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/providers/app_providers.dart';
 import '../../features/onboarding/first_visit_onboarding.dart';
-import '../../features/onboarding/onboarding_service.dart';
 
 class ShellNavItem {
   const ShellNavItem({
@@ -163,8 +162,6 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-  String? _onboardingCheckedForUser;
-
   @override
   void initState() {
     super.initState();
@@ -174,18 +171,11 @@ class _MainShellState extends ConsumerState<MainShell> {
   Future<void> _maybeShowOnboarding() async {
     final user = ref.read(authProvider).user;
     if (user == null || !mounted) return;
-    if (_onboardingCheckedForUser == user.id) return;
-    _onboardingCheckedForUser = user.id;
-
-    final service = ref.read(onboardingServiceProvider);
-    if (await service.hasSeenOnboarding(user.id)) return;
-    if (!mounted) return;
 
     await showFirstVisitOnboarding(
       context: context,
       ref: ref,
       role: user.role,
-      userId: user.id,
     );
   }
 

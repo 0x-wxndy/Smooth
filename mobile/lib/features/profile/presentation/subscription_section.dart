@@ -3,16 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/models/subscription_plan.dart';
+import '../../../features/payments/payment_models.dart';
 import '../../../shared/providers/subscription_provider.dart';
 
-class SubscriptionSection extends ConsumerWidget {
+class SubscriptionSection extends ConsumerStatefulWidget {
   const SubscriptionSection({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriptionSection> createState() => _SubscriptionSectionState();
+}
+
+class _SubscriptionSectionState extends ConsumerState<SubscriptionSection> {
+  SubscriptionPlan? _selectedPlan;
+
+  @override
+  Widget build(BuildContext context) {
     final s = S.of(context);
-    final selected = ref.watch(subscriptionProvider);
+    final active = ref.watch(subscriptionProvider);
+    final selected = _selectedPlan ?? active;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -46,6 +54,19 @@ class SubscriptionSection extends ConsumerWidget {
               s.subscriptionTypesHint,
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
             ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Text(
+                s.currentPlanLabel(active.planLabel(s)),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
             const SizedBox(height: 14),
             Text(s.subscriptionTypes, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 10),
@@ -59,8 +80,9 @@ class SubscriptionSection extends ConsumerWidget {
                       title: s.planFree,
                       priceLabel: s.planFreePrice,
                       selected: selected == SubscriptionPlan.free,
+                      isActive: active == SubscriptionPlan.free,
                       accent: AppColors.textSecondary,
-                      onTap: () => _selectPlan(context, ref, SubscriptionPlan.free),
+                      onTap: () => setState(() => _selectedPlan = SubscriptionPlan.free),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -71,8 +93,9 @@ class SubscriptionSection extends ConsumerWidget {
                       priceLabel: s.planPremiumPrice,
                       badge: s.planPopular,
                       selected: selected == SubscriptionPlan.premium,
+                      isActive: active == SubscriptionPlan.premium,
                       accent: AppColors.accentPurple,
-                      onTap: () => _selectPlan(context, ref, SubscriptionPlan.premium),
+                      onTap: () => setState(() => _selectedPlan = SubscriptionPlan.premium),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -83,8 +106,9 @@ class SubscriptionSection extends ConsumerWidget {
                       priceLabel: s.planVipPrice,
                       badge: s.planBestValue,
                       selected: selected == SubscriptionPlan.vip,
+                      isActive: active == SubscriptionPlan.vip,
                       accent: const Color(0xFFD97706),
-                      onTap: () => _selectPlan(context, ref, SubscriptionPlan.vip),
+                      onTap: () => setState(() => _selectedPlan = SubscriptionPlan.vip),
                     ),
                   ),
                 ],
@@ -92,18 +116,29 @@ class SubscriptionSection extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             _PlanComparisonTable(s: s, selected: selected),
+            if (selected.hasMentoring) ...[
+              const SizedBox(height: 12),
+              _PerkBanner(
+                icon: Icons.support_agent_rounded,
+                title: s.vipMentoringTitle,
+                body: s.vipMentoringBody,
+                color: const Color(0xFFD97706),
+              ),
+            ],
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () => _confirmSelection(context, ref, selected, s),
+                onPressed: selected == active && selected.isPaid
+                    ? null
+                    : () => _confirmSelection(context, selected, active, s),
                 style: FilledButton.styleFrom(
                   backgroundColor: selected.isPaid ? AppColors.accentPurple : AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                 ),
                 child: Text(
-                  selected.isPaid ? s.activatePlan(selected.planLabel(s)) : s.exploreMasterclasses,
+                  _buttonLabel(selected, active, s),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
@@ -115,28 +150,35 @@ class SubscriptionSection extends ConsumerWidget {
     );
   }
 
-  Future<void> _selectPlan(BuildContext context, WidgetRef ref, SubscriptionPlan plan) async {
-    await ref.read(subscriptionProvider.notifier).selectPlan(plan);
+  String _buttonLabel(SubscriptionPlan selected, SubscriptionPlan active, S s) {
+    if (selected.isPaid && selected == active) return s.currentPlanActive;
+    if (selected.isPaid) return s.activatePlan(selected.planLabel(s));
+    return s.exploreMasterclasses;
   }
 
   Future<void> _confirmSelection(
     BuildContext context,
-    WidgetRef ref,
     SubscriptionPlan plan,
+    SubscriptionPlan active,
     S s,
   ) async {
     if (!plan.isPaid) {
+      await ref.read(subscriptionProvider.notifier).selectPlan(SubscriptionPlan.free);
+      setState(() => _selectedPlan = SubscriptionPlan.free);
       if (context.mounted) context.go('/learn');
       return;
     }
 
-    await ref.read(subscriptionProvider.notifier).selectPlan(plan);
-    if (!context.mounted) return;
+    if (plan == active) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(s.planActivated(plan.planLabel(s))),
-        behavior: SnackBarBehavior.floating,
+    context.push(
+      '/checkout',
+      extra: PaymentCheckoutArgs(
+        title: plan.planLabel(s),
+        subtitle: s.subscriptionCheckoutSubtitle,
+        amountCentimes: plan.priceCentimes,
+        purpose: PaymentPurpose.subscription,
+        subscriptionPlan: plan,
       ),
     );
   }
@@ -150,12 +192,56 @@ extension _PlanLabel on SubscriptionPlan {
       };
 }
 
+class _PerkBanner extends StatelessWidget {
+  const _PerkBanner({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: color)),
+                const SizedBox(height: 4),
+                Text(body, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PlanCard extends StatelessWidget {
   const _PlanCard({
     required this.plan,
     required this.title,
     required this.priceLabel,
     required this.selected,
+    required this.isActive,
     required this.accent,
     required this.onTap,
     this.badge,
@@ -166,6 +252,7 @@ class _PlanCard extends StatelessWidget {
   final String priceLabel;
   final String? badge;
   final bool selected;
+  final bool isActive;
   final Color accent;
   final VoidCallback onTap;
 
@@ -224,6 +311,13 @@ class _PlanCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 9, color: AppColors.textSecondary, height: 1.2),
               ),
+              if (isActive) ...[
+                const SizedBox(height: 4),
+                Text(
+                  S.of(context).currentPlanBadge,
+                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: accent),
+                ),
+              ],
             ],
           ),
         ),

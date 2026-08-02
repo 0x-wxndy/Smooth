@@ -9,6 +9,7 @@ import '../models/hub_admin_model.dart';
 import '../models/publication_model.dart';
 import '../services/auth_repository.dart';
 import 'database_provider.dart';
+import 'subscription_provider.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -231,6 +232,18 @@ final enrolledCoursesProvider = FutureProvider<List<Course>>((ref) async {
   return ref.watch(databaseProvider).getEnrolledCourses(user.id);
 });
 
+final enrollmentCountProvider = FutureProvider<int>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null) return 0;
+  return ref.watch(databaseProvider).getEnrollmentCount(user.id);
+});
+
+final teacherEnrollmentStatsProvider = FutureProvider<TeacherEnrollmentStats>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null) return const TeacherEnrollmentStats(totalStudents: 0, students: []);
+  return ref.watch(databaseProvider).getTeacherEnrollmentStats(user.id);
+});
+
 final bookedServicesProvider = FutureProvider<List<FreelanceService>>((ref) async {
   final user = ref.watch(authProvider).user;
   if (user == null) return [];
@@ -255,7 +268,13 @@ final aiQuotaProvider = FutureProvider<AiQuota>((ref) async {
   if (userId == null) {
     return const AiQuota(freeUsed: 0, freeLimit: AppConfig.aiDailyLimit, bank: 0);
   }
-  return ref.watch(databaseProvider).getAiQuota(userId);
+  final quota = await ref.watch(databaseProvider).getAiQuota(userId);
+  final plan = ref.watch(subscriptionProvider);
+  return AiQuota(
+    freeUsed: quota.freeUsed,
+    freeLimit: plan.aiDailyLimit,
+    bank: quota.bank,
+  );
 });
 
 final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
@@ -303,4 +322,12 @@ final printOrdersProvider = FutureProvider<List<PrintOrder>>((ref) async {
 
 final serviceBookingsProvider = FutureProvider<List<ServiceBookingRecord>>((ref) async {
   return ref.watch(databaseProvider).getServiceBookings();
+});
+
+final paymentLogsProvider = FutureProvider<List<PaymentLogRecord>>((ref) async {
+  return ref.watch(databaseProvider).getPaymentLogs();
+});
+
+final adminActivityLogsProvider = FutureProvider<List<AdminActivityLog>>((ref) async {
+  return ref.watch(databaseProvider).getAdminActivityLogs();
 });

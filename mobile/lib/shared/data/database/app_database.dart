@@ -51,6 +51,8 @@ class AppDatabase {
           'user_reports',
           'contact_messages',
           'publications',
+          'payment_logs',
+          'admin_activity_logs',
           'courses',
           'gamification_wallets',
           'refresh_tokens',
@@ -304,16 +306,17 @@ class AppDatabase {
   }
 
   /// Consumes free daily quota first, then bonus bank tokens.
-  Future<bool> consumeAiToken(String userId) async {
-    final quota = await getAiQuota(userId);
-    if (!quota.canSend) return false;
+  Future<bool> consumeAiToken(String userId, {int? freeLimit}) async {
+    final used = await getAiUsageToday(userId);
+    final limit = freeLimit ?? AppConfig.aiDailyLimit;
+    final wallet = await getWallet(userId);
+    final freeRemaining = (limit - used).clamp(0, limit);
 
-    if (quota.freeRemaining > 0) {
+    if (freeRemaining > 0) {
       await incrementAiUsage(userId);
       return true;
     }
 
-    final wallet = await getWallet(userId);
     if (wallet.aiTokenBank <= 0) return false;
     await db.update(
       'gamification_wallets',
@@ -430,6 +433,14 @@ class AppDatabase {
       ));
     }
     return modules;
+  }
+
+  Future<int> getEnrollmentCount(String userId) async {
+    final rows = await db.rawQuery(
+      'SELECT COUNT(*) AS c FROM enrollments WHERE user_id = ?',
+      [userId],
+    );
+    return (rows.first['c'] as int?) ?? 0;
   }
 
   Future<void> enrollCourse(String userId, String courseId) async {
@@ -1356,7 +1367,7 @@ class AppDatabase {
 
   Future<TeacherEnrollmentStats> getTeacherEnrollmentStats(String teacherId) async {
     final rows = await db.rawQuery('''
-      SELECT u.id AS user_id, u.display_name, c.id AS course_id, c.title AS course_title,
+      SELECT u.id AS user_id, u.display_name, u.avatar_url, c.id AS course_id, c.title AS course_title,
              e.progress_percent
       FROM enrollments e
       JOIN courses c ON c.id = e.course_id
@@ -1372,6 +1383,7 @@ class AppDatabase {
             courseId: r['course_id'] as String,
             courseTitle: r['course_title'] as String,
             progressPercent: (r['progress_percent'] as num).toDouble(),
+            avatarUrl: r['avatar_url'] as String?,
           ),
         )
         .toList();
@@ -1458,6 +1470,101 @@ class AppDatabase {
       imagePaths: imagePaths,
       kind: kind,
       createdAt: now,
+    );
+  }
+
+  // ── Admin logs ────────────────────────────────────────────────────
+
+  Future<void> insertPaymentLog({
+    required String? userId,
+    required String? userName,
+    required String purpose,
+    required String title,
+    required int amountCents,
+    required String gateway,
+    required String status,
+    String? reference,
+    String? itemId,
+  }) async {
+    await db.insert('payment_logs', {
+      'id': 'pay_${DateTime.now().millisecondsSinceEpoch}',
+      'user_id': userId,
+      'user_name': userName,
+      'purpose': purpose,
+      'title': title,
+      'amount_cents': amountCents,
+      'gateway': gateway,
+      'status': status,
+      'reference': reference,
+      'item_id': itemId,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  Future<List<PaymentLogRecord>> getPaymentLogs({int limit = 100}) async {
+    final rows = await db.query(
+      'payment_logs',
+      orderBy: 'created_at DESC',
+      limit: limit,
+    );
+    return rows.map(_mapPaymentLog).toList();
+  }
+
+  Future<void> insertAdminActivityLog({
+    required String? actorId,
+    required String? actorName,
+    required String action,
+    String? targetType,
+    String? targetId,
+    String? details,
+  }) async {
+    await db.insert('admin_activity_logs', {
+      'id': 'act_${DateTime.now().millisecondsSinceEpoch}',
+      'actor_id': actorId,
+      'actor_name': actorName,
+      'action': action,
+      'target_type': targetType,
+      'target_id': targetId,
+      'details': details,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  Future<List<AdminActivityLog>> getAdminActivityLogs({int limit = 100}) async {
+    final rows = await db.query(
+      'admin_activity_logs',
+      orderBy: 'created_at DESC',
+      limit: limit,
+    );
+    return rows.map(_mapAdminActivityLog).toList();
+  }
+
+  PaymentLogRecord _mapPaymentLog(Map<String, Object?> row) {
+    return PaymentLogRecord(
+      id: row['id'] as String,
+      userId: row['user_id'] as String?,
+      userName: row['user_name'] as String?,
+      purpose: row['purpose'] as String,
+      title: row['title'] as String,
+      amountCents: row['amount_cents'] as int,
+      gateway: row['gateway'] as String,
+      status: row['status'] as String,
+      reference: row['reference'] as String?,
+      itemId: row['item_id'] as String?,
+      createdAt: row['created_at'] as String,
+    );
+  }
+
+  AdminActivityLog _mapAdminActivityLog(Map<String, Object?> row) {
+    return AdminActivityLog(
+      id: row['id'] as String,
+      actorId: row['actor_id'] as String?,
+      actorName: row['actor_name'] as String?,
+      action: row['action'] as String,
+      targetType: row['target_type'] as String?,
+      targetId: row['target_id'] as String?,
+      details: row['details'] as String?,
+      createdAt: row['created_at'] as String,
     );
   }
 

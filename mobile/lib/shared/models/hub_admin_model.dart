@@ -200,3 +200,56 @@ class AdminStats {
 
   int get totalUsers => learners + teachers + clients;
 }
+
+class PaymentLogRecord {
+  const PaymentLogRecord({
+    required this.id,
+    required this.purpose,
+    required this.title,
+    required this.amountCents,
+    required this.gateway,
+    required this.status,
+    required this.createdAt,
+    this.userId,
+    this.userName,
+    this.reference,
+    this.itemId,
+  });
+
+  final String id;
+  final String? userId;
+  final String? userName;
+  final String purpose;
+  final String title;
+  final int amountCents;
+  final String gateway;
+  final String status;
+  final String? reference;
+  final String? itemId;
+  final String createdAt;
+
+  String get amountLabel => Money.format(amountCents);
+  bool get isSuccess => status == 'success';
+}
+
+class AdminActivityLog {
+  const AdminActivityLog({
+    required this.id,
+    required this.action,
+    required this.createdAt,
+    this.actorId,
+    this.actorName,
+    this.targetType,
+    this.targetId,
+    this.details,
+  });
+
+  final String id;
+  final String? actorId;
+  final String? actorName;
+  final String action;
+  final String? targetType;
+  final String? targetId;
+  final String? details;
+  final String createdAt;
+}

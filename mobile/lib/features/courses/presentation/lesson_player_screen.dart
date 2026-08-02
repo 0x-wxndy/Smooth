@@ -8,6 +8,7 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../../../shared/widgets/smooth_button.dart';
 import 'lesson_video_launcher.dart';
 
@@ -153,6 +154,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
+    final plan = ref.watch(subscriptionProvider);
     final controller = _controller;
 
     return Scaffold(
@@ -248,6 +250,43 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (plan.hasSourceFiles) ...[
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(s.sourceFilesDownloaded)),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white24),
+                    ),
+                    icon: const Icon(Icons.folder_zip_outlined, size: 18),
+                    label: Text(s.downloadSourceFiles),
+                  ),
+                  const SizedBox(height: 10),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lock_outline, color: Colors.white54, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            s.sourceFilesLocked,
+                            style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 Text(
                   widget.alreadyCompleted ? s.lessonDone : s.completeLesson,
                   style: const TextStyle(color: Colors.white70, fontSize: 13),

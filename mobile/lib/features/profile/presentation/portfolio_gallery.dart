@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
 
 class PortfolioItem {
@@ -13,7 +14,6 @@ class PortfolioItem {
   final String tag;
 }
 
-
 List<PortfolioItem> mockPortfolioItems(String userId) {
   const titles = [
     'Brand identity refresh',
@@ -23,10 +23,10 @@ List<PortfolioItem> mockPortfolioItems(String userId) {
   ];
   const tags = ['Branding', 'UI/UX', 'Web', 'Product'];
   const images = [
-    'assets/portfolio/P1.jpg',
-    'assets/portfolio/P2.jpg',
-    'assets/portfolio/P3.jpg',
-    'assets/portfolio/P4.jpg',
+    AppAssets.portfolioBrand,
+    AppAssets.portfolioMobile,
+    AppAssets.portfolioWeb,
+    AppAssets.portfolioDashboard,
   ];
 
   return List.generate(4, (i) {
@@ -74,14 +74,24 @@ class _PortfolioTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            item.imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              color: AppColors.surfaceVariant,
-              child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+          if (item.imageUrl.startsWith('assets/'))
+            Image.asset(
+              item.imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: AppColors.surfaceVariant,
+                child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+              ),
+            )
+          else
+            Image.network(
+              item.imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: AppColors.surfaceVariant,
+                child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+              ),
             ),
-          ),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -89,9 +99,9 @@ class _PortfolioTile extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withValues(alpha: 0.75),
+                  Colors.black.withValues(alpha: 0.78),
                 ],
-                stops: const [0.5, 1.0],
+                stops: const [0.45, 1.0],
               ),
             ),
           ),
@@ -101,7 +111,7 @@ class _PortfolioTile extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.45),
+                color: AppColors.primary.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(

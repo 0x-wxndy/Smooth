@@ -6,15 +6,131 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/theme/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/money.dart';
+import '../../../features/payments/payment_models.dart';
 import '../../../core/utils/role_utils.dart';
+import '../../../shared/models/hub_admin_model.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/smooth_button.dart';
-import '../../../shared/widgets/smooth_components.dart';
+
+/// Hero banner with a background image for Hub sections.
+class HubSectionBanner extends StatelessWidget {
+  const HubSectionBanner({
+    super.key,
+    required this.imageUrl,
+    required this.title,
+    this.subtitle,
+    this.height = 168,
+  });
+
+  final String imageUrl;
+  final String title;
+  final String? subtitle;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _hubCoverImage(imageUrl, fallbackUrl: AppAssets.heroOffice),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.black.withValues(alpha: 0.65),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      height: 1.2,
+                    ),
+                  ),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Widget _hubCoverImage(String url, {String? fallbackUrl}) {
+  Widget gradientFallback() => Container(
+        decoration: const BoxDecoration(gradient: AppColors.gradientPrimary),
+      );
+
+  if (url.startsWith('assets/')) {
+    return Image.asset(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) {
+        if (fallbackUrl != null && fallbackUrl != url) {
+          return _hubCoverImage(fallbackUrl);
+        }
+        return gradientFallback();
+      },
+    );
+  }
+  return Image.network(
+    url,
+    fit: BoxFit.cover,
+    loadingBuilder: (context, child, progress) {
+      if (progress == null) return child;
+      return Container(
+        color: AppColors.surfaceVariant,
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    },
+    errorBuilder: (_, __, ___) {
+      if (fallbackUrl != null && fallbackUrl != url) {
+        return _hubCoverImage(fallbackUrl);
+      }
+      return gradientFallback();
+    },
+  );
+}
 
 /// Compact promo for market / dashboards — book rooms & print (teachers, clients).
 class HubFacilitiesPromo extends StatelessWidget {
@@ -23,64 +139,56 @@ class HubFacilitiesPromo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    return BorderedSection(
-      borderColor: AppColors.primary,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.apartment_rounded, color: AppColors.primary),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            HubSectionBanner(
+              imageUrl: AppAssets.hubFacilitiesCover,
+              title: s.hubFacilities,
+              subtitle: s.hubFacilitiesSub,
+              height: 120,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.push('/hub/rooms'),
+                          icon: const Icon(Icons.meeting_room_outlined, size: 18),
+                          label: Text(s.rentRooms, style: const TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => context.push('/hub/print'),
+                          style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                          icon: const Icon(Icons.print_outlined, size: 18),
+                          label: Text(s.printingServices, style: const TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(onPressed: () => context.push('/hub'), child: Text(s.seeAll)),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(s.hubFacilities, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text(
-                      s.hubFacilitiesSub,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push('/hub/rooms'),
-                  icon: const Icon(Icons.meeting_room_outlined, size: 18),
-                  label: Text(s.rentRooms, style: const TextStyle(fontSize: 12)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => context.push('/hub/print'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                  icon: const Icon(Icons.print_outlined, size: 18),
-                  label: Text(s.printingServices, style: const TextStyle(fontSize: 12)),
-                ),
-              ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(onPressed: () => context.push('/hub'), child: Text(s.seeAll)),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -121,13 +229,18 @@ class HubFacilitiesScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(s.hubFacilitiesSub, style: const TextStyle(color: AppColors.textSecondary, height: 1.4)),
-          const SizedBox(height: 16),
+          HubSectionBanner(
+            imageUrl: AppAssets.hubFacilitiesCover,
+            title: s.hubFacilities,
+            subtitle: s.hubFacilitiesSub,
+          ),
+          const SizedBox(height: 20),
           _HubCard(
             icon: Icons.meeting_room_rounded,
             color: AppColors.primary,
             title: s.rentRooms,
             subtitle: s.rentRoomsSub,
+            imageUrl: AppAssets.hubRoomsCover,
             onTap: () => context.push('/hub/rooms'),
           ),
           _HubCard(
@@ -135,6 +248,7 @@ class HubFacilitiesScreen extends ConsumerWidget {
             color: AppColors.accentOrange,
             title: s.printingServices,
             subtitle: s.printingServicesSub,
+            imageUrl: AppAssets.hubPrintCover,
             onTap: () => context.push('/hub/print'),
           ),
           _HubCard(
@@ -142,6 +256,7 @@ class HubFacilitiesScreen extends ConsumerWidget {
             color: AppColors.accentGreen,
             title: s.contactHub,
             subtitle: s.contactHubSub,
+            imageUrl: AppAssets.hubContactCover,
             onTap: () => context.push('/hub/contact'),
           ),
         ],
@@ -156,6 +271,7 @@ class _HubCard extends StatelessWidget {
     required this.color,
     required this.title,
     required this.subtitle,
+    required this.imageUrl,
     required this.onTap,
   });
 
@@ -163,19 +279,75 @@ class _HubCard extends StatelessWidget {
   final Color color;
   final String title;
   final String subtitle;
+  final String imageUrl;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
-        contentPadding: const EdgeInsets.all(14),
-        leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.15), child: Icon(icon, color: color)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, height: 1.35)),
-        trailing: const Icon(Icons.chevron_right),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 110,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _hubCoverImage(imageUrl, fallbackUrl: AppAssets.heroOffice),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.45),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 14,
+                    bottom: 10,
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: color.withValues(alpha: 0.9),
+                          child: Icon(icon, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(subtitle, style: const TextStyle(fontSize: 12, height: 1.35)),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -287,9 +459,20 @@ class RoomsCatalogScreen extends ConsumerWidget {
         value: roomsAsync,
         builder: (rooms) => ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: rooms.length,
+          itemCount: rooms.length + 1,
           itemBuilder: (_, i) {
-            final room = rooms[i];
+            if (i == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: HubSectionBanner(
+                  imageUrl: AppAssets.hubRoomsCover,
+                  title: s.rentRooms,
+                  subtitle: s.rentRoomsSub,
+                  height: 150,
+                ),
+              );
+            }
+            final room = rooms[i - 1];
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
@@ -367,9 +550,7 @@ class RoomsCatalogScreen extends ConsumerWidget {
   }
 
 Future<void> _book(BuildContext context, WidgetRef ref, String roomId, String billing) async {
-    final s = S.of(context);
-    final userId = ref.read(authProvider).user?.id;
-    if (userId == null) return;
+    if (ref.read(authProvider).user?.id == null) return;
 
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
@@ -400,21 +581,25 @@ Future<void> _book(BuildContext context, WidgetRef ref, String roomId, String bi
       endAt = startAt.add(const Duration(hours: 2));
     }
 
-    final booking = await ref.read(databaseProvider).bookRoom(
-          roomId: roomId,
-          userId: userId,
-          billing: billing,
-          startAt: startAt,
-          endAt: endAt,
-        );
-    ref.invalidate(roomBookingsProvider);
-    ref.invalidate(adminStatsProvider);
-    if (!context.mounted) return;
+    final room = await ref.read(databaseProvider).getRoom(roomId);
+    if (room == null || !context.mounted) return;
+
+    final total = billing == 'day'
+        ? room.priceDayCents
+        : room.priceHourCents * endAt.difference(startAt).inHours.clamp(1, 24);
     final label = DateFormat('d MMM, HH:mm').format(startAt);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${s.roomBooked} · $label · ${Money.format(booking.totalCents)}'),
-        backgroundColor: AppColors.success,
+
+    context.push(
+      '/checkout',
+      extra: PaymentCheckoutArgs(
+        title: room.name,
+        subtitle: label,
+        amountCentimes: total,
+        purpose: PaymentPurpose.hubRoom,
+        itemId: roomId,
+        hubBilling: billing,
+        hubStartAt: startAt,
+        hubEndAt: endAt,
       ),
     );
   }
@@ -434,9 +619,20 @@ class PrintCatalogScreen extends ConsumerWidget {
         value: servicesAsync,
         builder: (items) => ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: items.length,
+          itemCount: items.length + 1,
           itemBuilder: (_, i) {
-            final p = items[i];
+            if (i == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: HubSectionBanner(
+                  imageUrl: AppAssets.hubPrintCover,
+                  title: s.printingServices,
+                  subtitle: s.printingServicesSub,
+                  height: 150,
+                ),
+              );
+            }
+            final p = items[i - 1];
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
               child: Padding(
@@ -470,9 +666,7 @@ class PrintCatalogScreen extends ConsumerWidget {
   }
 
 Future<void> _order(BuildContext context, WidgetRef ref, String serviceId) async {
-    final s = S.of(context);
-    final userId = ref.read(authProvider).user?.id;
-    if (userId == null) return;
+    if (ref.read(authProvider).user?.id == null) return;
 
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
@@ -498,21 +692,29 @@ Future<void> _order(BuildContext context, WidgetRef ref, String serviceId) async
       pickedTime.minute,
     );
 
-    final order = await ref.read(databaseProvider).createPrintOrder(
-          serviceId: serviceId,
-          userId: userId,
-          quantity: 1,
-          notes: 'Commande demo hub',
-          scheduledAt: scheduledAt,
-        );
-    ref.invalidate(printOrdersProvider);
-    ref.invalidate(adminStatsProvider);
-    if (!context.mounted) return;
+    final services = await ref.read(databaseProvider).getPrintServices();
+    PrintServiceItem? service;
+    for (final p in services) {
+      if (p.id == serviceId) {
+        service = p;
+        break;
+      }
+    }
+    if (service == null || !context.mounted) return;
+
     final label = DateFormat('d MMM, HH:mm').format(scheduledAt);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${s.printOrdered} · $label · ${Money.format(order.totalCents)}'),
-        backgroundColor: AppColors.success,
+
+    context.push(
+      '/checkout',
+      extra: PaymentCheckoutArgs(
+        title: service.title,
+        subtitle: label,
+        amountCentimes: service.priceCents,
+        purpose: PaymentPurpose.hubPrint,
+        itemId: serviceId,
+        printScheduledAt: scheduledAt,
+        printNotes: 'Commande demo hub',
+        printQuantity: 1,
       ),
     );
   }
@@ -584,6 +786,12 @@ class _ContactHubScreenState extends ConsumerState<ContactHubScreen> {
       ),
       body: Column(
         children: [
+          HubSectionBanner(
+            imageUrl: AppAssets.hubContactCover,
+            title: s.contactHub,
+            subtitle: s.contactHubSub,
+            height: 130,
+          ),
           Expanded(
             child: ColoredBox(
               color: const Color(0xFFF0F2F5),

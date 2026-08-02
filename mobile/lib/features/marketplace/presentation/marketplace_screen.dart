@@ -521,7 +521,7 @@ class _FreelancersSection extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
                 SizedBox(
-                  height: 195,
+                  height: 168,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: providers.length,

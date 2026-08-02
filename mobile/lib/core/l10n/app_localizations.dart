@@ -217,6 +217,22 @@ class S {
   String get planVipPerk => t('planVipPerk');
   String activatePlan(String plan) => t('activatePlan').replaceAll('{plan}', plan);
   String planActivated(String plan) => t('planActivated').replaceAll('{plan}', plan);
+  String currentPlanLabel(String plan) => t('currentPlanLabel').replaceAll('{plan}', plan);
+  String get currentPlanBadge => t('currentPlanBadge');
+  String get currentPlanActive => t('currentPlanActive');
+  String get subscriptionCheckoutSubtitle => t('subscriptionCheckoutSubtitle');
+  String masterclassLimitReached(int limit) => t('masterclassLimitReached').replaceAll('{limit}', '$limit');
+  String get upgradeSubscription => t('upgradeSubscription');
+  String get subscriptionCoversCourses => t('subscriptionCoversCourses');
+  String get enrollIncluded => t('enrollIncluded');
+  String get downloadSourceFiles => t('downloadSourceFiles');
+  String get sourceFilesLocked => t('sourceFilesLocked');
+  String get sourceFilesDownloaded => t('sourceFilesDownloaded');
+  String get exclusiveWebinarsTitle => t('exclusiveWebinarsTitle');
+  String get exclusiveWebinarsBody => t('exclusiveWebinarsBody');
+  String get vipMentoringTitle => t('vipMentoringTitle');
+  String get vipMentoringBody => t('vipMentoringBody');
+  String get priorityReviewActive => t('priorityReviewActive');
   String get viewFeedback => t('viewFeedback');
   String get feedbackTitle => t('feedbackTitle');
   String get feedbackSubtitle => t('feedbackSubtitle');
@@ -278,9 +294,43 @@ class S {
   String get reviewSubmitted => t('reviewSubmitted');
   String get availableCourses => t('availableCourses');
   String get profileLibraryTitle => t('profileLibraryTitle');
+  String get myLearning => t('myLearning');
+  String get clientLibraryTitle => t('clientLibraryTitle');
+  String get learningJourney => t('learningJourney');
+  String get learningJourneySub => t('learningJourneySub');
+  String get clientShowcaseTitle => t('clientShowcaseTitle');
+  String get clientShowcaseSub => t('clientShowcaseSub');
+  String get bookedServicesLabel => t('bookedServicesLabel');
   String get noEnrolledCourses => t('noEnrolledCourses');
   String get noBookedServices => t('noBookedServices');
   String get noReviewsYet => t('noReviewsYet');
+  String get myStudents => t('myStudents');
+  String get enrolledStudents => t('enrolledStudents');
+  String totalEnrolled(int n) => t('totalEnrolled').replaceAll('{n}', '$n');
+  String studentsEnrolled(int n) => t('studentsEnrolled').replaceAll('{n}', '$n');
+  String get studentProgress => t('studentProgress');
+  String get noEnrolledStudentsYet => t('noEnrolledStudentsYet');
+  String get courseStudents => t('courseStudents');
+  String get publicationKindOffer => t('publicationKindOffer');
+  String get publicationKindAnnouncement => t('publicationKindAnnouncement');
+  String get momentsSubtitle => t('momentsSubtitle');
+  String get momentsEmptyHint => t('momentsEmptyHint');
+  String get writeAReview => t('writeAReview');
+  String get reviewCommentHint => t('reviewCommentHint');
+  String reviewsLabel(int n) => t('reviewsLabel').replaceAll('{n}', '$n');
+  String get requestQuote => t('requestQuote');
+  String get courseNotFound => t('courseNotFound');
+  String get serviceNotFound => t('serviceNotFound');
+  String get enrolledSuccess => t('enrolledSuccess');
+  String get curriculum => t('curriculum');
+  String get quoteSentDemo => t('quoteSentDemo');
+  String get signInRequired => t('signInRequired');
+  String get manageCourse => t('manageCourse');
+  String get manageCoursesTab => t('manageCoursesTab');
+  String get manageStudentsTab => t('manageStudentsTab');
+  String get faqTitle => t('faqTitle');
+  String get faqRevisionsQ => t('faqRevisionsQ');
+  String get faqRevisionsA => t('faqRevisionsA');
   String get providerReviewMaria1 => t('providerReviewMaria1');
   String get providerReviewMaria2 => t('providerReviewMaria2');
   String get providerReviewMaria3 => t('providerReviewMaria3');
@@ -430,6 +480,15 @@ class S {
   String get manageRoomsSub => t('manageRoomsSub');
   String get managePrint => t('managePrint');
   String get managePrintSub => t('managePrintSub');
+  String get manageLogs => t('manageLogs');
+  String get manageLogsSub => t('manageLogsSub');
+  String get paymentLogs => t('paymentLogs');
+  String get activityLogs => t('activityLogs');
+  String get noPaymentLogs => t('noPaymentLogs');
+  String get noActivityLogs => t('noActivityLogs');
+  String get markDone => t('markDone');
+  String get anonymousUser => t('anonymousUser');
+  String get system => t('system');
   String get manageMessages => t('manageMessages');
   String get manageMessagesSub => t('manageMessagesSub');
   String get howUsersContact => t('howUsersContact');
@@ -1101,6 +1160,74 @@ class S {
       'fr': 'Formule {plan} activée (démo)',
       'ar': 'تم تفعيل باقة {plan} (تجريبي)',
     },
+    'currentPlanLabel': {
+      'en': 'Your plan: {plan}',
+      'fr': 'Votre formule : {plan}',
+      'ar': 'باقتك: {plan}',
+    },
+    'currentPlanBadge': {'en': 'Active', 'fr': 'Actif', 'ar': 'نشط'},
+    'currentPlanActive': {'en': 'Current plan', 'fr': 'Formule actuelle', 'ar': 'الباقة الحالية'},
+    'subscriptionCheckoutSubtitle': {
+      'en': 'Monthly / yearly subscription',
+      'fr': 'Abonnement mensuel / annuel',
+      'ar': 'اشتراك شهري / سنوي',
+    },
+    'masterclassLimitReached': {
+      'en': 'Free plan allows {limit} masterclasses. Upgrade for unlimited access.',
+      'fr': 'La formule gratuite permet {limit} masterclasses. Passez à Premium pour un accès illimité.',
+      'ar': 'الباقة المجانية تسمح بـ {limit} دورات. ترقّ للوصول غير المحدود.',
+    },
+    'upgradeSubscription': {'en': 'Upgrade', 'fr': 'Upgrader', 'ar': 'ترقية'},
+    'subscriptionCoversCourses': {
+      'en': 'Enrolled — included in your subscription',
+      'fr': 'Inscrit — inclus dans votre abonnement',
+      'ar': 'تم التسجيل — مشمول في اشتراكك',
+    },
+    'enrollIncluded': {
+      'en': 'Enroll (included)',
+      'fr': 'S\'inscrire (inclus)',
+      'ar': 'التسجيل (مشمول)',
+    },
+    'downloadSourceFiles': {
+      'en': 'Download source files',
+      'fr': 'Télécharger les fichiers sources',
+      'ar': 'تحميل ملفات المصدر',
+    },
+    'sourceFilesLocked': {
+      'en': 'Source files — Premium or VIP required',
+      'fr': 'Fichiers sources — Premium ou VIP requis',
+      'ar': 'ملفات المصدر — Premium أو VIP مطلوب',
+    },
+    'sourceFilesDownloaded': {
+      'en': 'Source files saved (demo)',
+      'fr': 'Fichiers sources enregistrés (démo)',
+      'ar': 'تم حفظ ملفات المصدر (تجريبي)',
+    },
+    'exclusiveWebinarsTitle': {
+      'en': 'Exclusive webinars',
+      'fr': 'Webinaires exclusifs',
+      'ar': 'ندوات حصرية',
+    },
+    'exclusiveWebinarsBody': {
+      'en': 'Live sessions with top mentors — included in your Premium/VIP plan.',
+      'fr': 'Sessions live avec des mentors — incluses dans Premium/VIP.',
+      'ar': 'جلسات مباشرة مع مرشدين — مشمولة في Premium/VIP.',
+    },
+    'vipMentoringTitle': {
+      'en': '1-on-1 mentoring',
+      'fr': 'Mentorat individuel',
+      'ar': 'مرافقة فردية',
+    },
+    'vipMentoringBody': {
+      'en': 'Book a private session with a Samooth mentor (VIP).',
+      'fr': 'Réservez une session privée avec un mentor Samooth (VIP).',
+      'ar': 'احجز جلسة خاصة مع مرشد Samooth (VIP).',
+    },
+    'priorityReviewActive': {
+      'en': 'Priority portfolio review active',
+      'fr': 'Revue portfolio prioritaire active',
+      'ar': 'مراجعة معرض أعمال بأولوية',
+    },
     'viewFeedback': {'en': 'View Feedback', 'fr': 'Voir les retours', 'ar': 'عرض التعليقات'},
     'feedbackTitle': {'en': 'Feedback', 'fr': 'Retours', 'ar': 'التعليقات'},
     'feedbackSubtitle': {
@@ -1319,6 +1446,41 @@ class S {
       'fr': 'Mes cours & services',
       'ar': 'دوراتي وخدماتي',
     },
+    'myLearning': {
+      'en': 'My learning',
+      'fr': 'Mon apprentissage',
+      'ar': 'تعلّمي',
+    },
+    'clientLibraryTitle': {
+      'en': 'Booked services',
+      'fr': 'Services réservés',
+      'ar': 'الخدمات المحجوزة',
+    },
+    'learningJourney': {
+      'en': 'Learning journey',
+      'fr': 'Parcours d\'apprentissage',
+      'ar': 'مسار التعلّم',
+    },
+    'learningJourneySub': {
+      'en': 'Courses, progress and moments',
+      'fr': 'Cours, progression et moments',
+      'ar': 'الدورات والتقدّم واللحظات',
+    },
+    'clientShowcaseTitle': {
+      'en': 'Projects & activity',
+      'fr': 'Projets & activité',
+      'ar': 'المشاريع والنشاط',
+    },
+    'clientShowcaseSub': {
+      'en': 'Offers, bookings and updates',
+      'fr': 'Offres, réservations et actualités',
+      'ar': 'العروض والحجوزات والتحديثات',
+    },
+    'bookedServicesLabel': {
+      'en': 'Booked services',
+      'fr': 'Services réservés',
+      'ar': 'خدمات محجوزة',
+    },
     'noEnrolledCourses': {
       'en': 'You have not enrolled in any courses yet.',
       'fr': 'Vous n’êtes inscrit à aucun cours pour le moment.',
@@ -1333,6 +1495,141 @@ class S {
       'en': 'No reviews yet',
       'fr': 'Aucun avis pour le moment',
       'ar': 'لا توجد تقييمات بعد',
+    },
+    'myStudents': {
+      'en': 'My students',
+      'fr': 'Mes étudiants',
+      'ar': 'طلابي',
+    },
+    'enrolledStudents': {
+      'en': 'Enrolled students',
+      'fr': 'Étudiants inscrits',
+      'ar': 'الطلاب المسجلون',
+    },
+    'totalEnrolled': {
+      'en': '{n} students enrolled',
+      'fr': '{n} étudiants inscrits',
+      'ar': '{n} طالب مسجل',
+    },
+    'studentsEnrolled': {
+      'en': '{n} enrolled in this course',
+      'fr': '{n} inscrits à ce cours',
+      'ar': '{n} مسجل في هذه الدورة',
+    },
+    'studentProgress': {
+      'en': 'Progress',
+      'fr': 'Progression',
+      'ar': 'التقدم',
+    },
+    'noEnrolledStudentsYet': {
+      'en': 'No students enrolled yet. Share your course to get learners!',
+      'fr': 'Aucun étudiant inscrit. Partagez votre cours !',
+      'ar': 'لا يوجد طلاب مسجلون بعد. شارك دورتك!',
+    },
+    'courseStudents': {
+      'en': 'Course & students',
+      'fr': 'Cours & étudiants',
+      'ar': 'الدورة والطلاب',
+    },
+    'publicationKindOffer': {
+      'en': 'Offer',
+      'fr': 'Offre',
+      'ar': 'عرض',
+    },
+    'publicationKindAnnouncement': {
+      'en': 'Announcement',
+      'fr': 'Annonce',
+      'ar': 'إعلان',
+    },
+    'momentsSubtitle': {
+      'en': 'Posts, updates and highlights from this profile.',
+      'fr': 'Publications, actualités et temps forts de ce profil.',
+      'ar': 'منشورات وتحديثات وأبرز لحظات هذا البروفايل.',
+    },
+    'momentsEmptyHint': {
+      'en': 'Share what you are working on — projects, tips, or announcements.',
+      'fr': 'Partagez vos projets, conseils ou annonces.',
+      'ar': 'شارك ما تعمل عليه — مشاريع، نصائح أو إعلانات.',
+    },
+    'writeAReview': {
+      'en': 'Write a review',
+      'fr': 'Rédiger un avis',
+      'ar': 'اكتب تقييماً',
+    },
+    'reviewCommentHint': {
+      'en': 'Share your experience with this creator…',
+      'fr': 'Partagez votre expérience avec ce créateur…',
+      'ar': 'شارك تجربتك مع هذا المنشئ…',
+    },
+    'reviewsLabel': {
+      'en': '{n} reviews',
+      'fr': '{n} avis',
+      'ar': '{n} تقييم',
+    },
+    'requestQuote': {
+      'en': 'Request quote',
+      'fr': 'Demander un devis',
+      'ar': 'طلب عرض سعر',
+    },
+    'courseNotFound': {
+      'en': 'Course not found',
+      'fr': 'Cours introuvable',
+      'ar': 'الدورة غير موجودة',
+    },
+    'serviceNotFound': {
+      'en': 'Service not found',
+      'fr': 'Service introuvable',
+      'ar': 'الخدمة غير موجودة',
+    },
+    'enrolledSuccess': {
+      'en': 'Enrolled successfully!',
+      'fr': 'Inscription réussie !',
+      'ar': 'تم التسجيل بنجاح!',
+    },
+    'curriculum': {
+      'en': 'Curriculum',
+      'fr': 'Programme',
+      'ar': 'المنهج',
+    },
+    'quoteSentDemo': {
+      'en': 'Quote request sent (demo)',
+      'fr': 'Demande de devis envoyée (démo)',
+      'ar': 'تم إرسال طلب العرض (تجريبي)',
+    },
+    'signInRequired': {
+      'en': 'Please sign in to continue',
+      'fr': 'Connectez-vous pour continuer',
+      'ar': 'يرجى تسجيل الدخول للمتابعة',
+    },
+    'manageCourse': {
+      'en': 'Manage students',
+      'fr': 'Gérer les étudiants',
+      'ar': 'إدارة الطلاب',
+    },
+    'manageCoursesTab': {
+      'en': 'Courses',
+      'fr': 'Cours',
+      'ar': 'الدورات',
+    },
+    'manageStudentsTab': {
+      'en': 'Students',
+      'fr': 'Étudiants',
+      'ar': 'الطلاب',
+    },
+    'faqTitle': {
+      'en': 'FAQ',
+      'fr': 'FAQ',
+      'ar': 'الأسئلة الشائعة',
+    },
+    'faqRevisionsQ': {
+      'en': 'How many revisions?',
+      'fr': 'Combien de révisions ?',
+      'ar': 'كم عدد المراجعات؟',
+    },
+    'faqRevisionsA': {
+      'en': 'Up to 3 revisions included.',
+      'fr': 'Jusqu’à 3 révisions incluses.',
+      'ar': 'حتى 3 مراجعات مشمولة.',
     },
     'providerReviewMaria1': {
       'en': 'Maria explains complex topics clearly. My Flutter skills jumped in weeks.',
@@ -1752,6 +2049,39 @@ class S {
       'fr': 'Logos, flyers, commandes',
       'ar': 'شعارات وملفات وطلبات الطباعة',
     },
+    'manageLogs': {
+      'en': 'Logs & payments',
+      'fr': 'Journaux & paiements',
+      'ar': 'السجلات والمدفوعات',
+    },
+    'manageLogsSub': {
+      'en': 'Payment history and admin actions',
+      'fr': 'Historique paiements et actions admin',
+      'ar': 'سجل المدفوعات وإجراءات الإدارة',
+    },
+    'paymentLogs': {
+      'en': 'Payment logs',
+      'fr': 'Journal paiements',
+      'ar': 'سجل المدفوعات',
+    },
+    'activityLogs': {
+      'en': 'Activity logs',
+      'fr': 'Journal activité',
+      'ar': 'سجل النشاط',
+    },
+    'noPaymentLogs': {
+      'en': 'No payments recorded yet',
+      'fr': 'Aucun paiement enregistré',
+      'ar': 'لا مدفوعات مسجّلة بعد',
+    },
+    'noActivityLogs': {
+      'en': 'No admin actions yet',
+      'fr': 'Aucune action admin',
+      'ar': 'لا إجراءات إدارية بعد',
+    },
+    'markDone': {'en': 'Done', 'fr': 'Terminé', 'ar': 'تم'},
+    'anonymousUser': {'en': 'Anonymous', 'fr': 'Anonyme', 'ar': 'مجهول'},
+    'system': {'en': 'System', 'fr': 'Système', 'ar': 'النظام'},
     'manageMessages': {
       'en': 'Contact inbox',
       'fr': 'Boîte de contact',

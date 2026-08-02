@@ -10,6 +10,7 @@ import '../../../features/payments/payment_models.dart';
 import '../../../shared/models/marketplace_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../../../shared/widgets/smooth_components.dart';
 import '../../../shared/models/user_model.dart';
 
@@ -71,7 +72,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final userId = ref.read(authProvider).user?.id;
     if (userId == null) return;
 
-    final consumed = await ref.read(databaseProvider).consumeAiToken(userId);
+    final plan = ref.read(subscriptionProvider);
+    final consumed = await ref.read(databaseProvider).consumeAiToken(userId, freeLimit: plan.aiDailyLimit);
     if (!consumed) {
       if (!mounted) return;
       _showOutOfTokens();

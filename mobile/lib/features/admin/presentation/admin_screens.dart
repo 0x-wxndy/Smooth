@@ -17,6 +17,61 @@ import '../../../shared/widgets/hub_hero.dart';
 import '../../../shared/widgets/back_to_menu_bar.dart';
 import '../../../shared/widgets/smooth_components.dart';
 
+Future<void> _logAdminAction(
+  WidgetRef ref, {
+  required String action,
+  String? targetType,
+  String? targetId,
+  String? details,
+}) async {
+  final admin = ref.read(authProvider).user;
+  await ref.read(databaseProvider).insertAdminActivityLog(
+        actorId: admin?.id,
+        actorName: admin?.displayName,
+        action: action,
+        targetType: targetType,
+        targetId: targetId,
+        details: details,
+      );
+  ref.invalidate(adminActivityLogsProvider);
+}
+
+/// Sub-pages opened from the dashboard — always show a back affordance.
+class AdminSubpageScaffold extends StatelessWidget {
+  const AdminSubpageScaffold({
+    super.key,
+    required this.title,
+    required this.body,
+    this.actions,
+  });
+
+  final String title;
+  final Widget body;
+  final List<Widget>? actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
+        title: Text(title),
+        actions: actions,
+      ),
+      body: body,
+    );
+  }
+}
+
 class AdminDashboardTab extends ConsumerWidget {
   const AdminDashboardTab({super.key});
 
@@ -44,31 +99,31 @@ class AdminDashboardTab extends ConsumerWidget {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          Expanded(child: _Stat(s.teachers, '${stats.teachers}', Icons.school, AppColors.accentPurple)),
+                          Expanded(child: _Stat(s.teachers, '${stats.teachers}', Icons.school, AppColors.accentPurple, () => context.go('/admin/users'))),
                           const SizedBox(width: 10),
-                          Expanded(child: _Stat(s.bookings, '${stats.serviceBookings}', Icons.event_available, AppColors.accentGreen)),
+                          Expanded(child: _Stat(s.bookings, '${stats.serviceBookings}', Icons.event_available, AppColors.accentGreen, () => context.push('/admin/market'))),
                           const SizedBox(width: 10),
-                          Expanded(child: _Stat(s.reports, '${stats.openReports}', Icons.flag, AppColors.error)),
+                          Expanded(child: _Stat(s.reports, '${stats.openReports}', Icons.flag, AppColors.error, () => context.go('/admin/reports'))),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          Expanded(child: _Stat(s.learners, '${stats.learners}', Icons.menu_book, AppColors.accentBlue)),
+                          Expanded(child: _Stat(s.learners, '${stats.learners}', Icons.menu_book, AppColors.accentBlue, () => context.go('/admin/users'))),
                           const SizedBox(width: 10),
-                          Expanded(child: _Stat(s.clients, '${stats.clients}', Icons.business_center, AppColors.accentOrange)),
+                          Expanded(child: _Stat(s.clients, '${stats.clients}', Icons.business_center, AppColors.accentOrange, () => context.go('/admin/users'))),
                           const SizedBox(width: 10),
-                          Expanded(child: _Stat(s.messages, '${stats.newMessages}', Icons.mail, AppColors.primary)),
+                          Expanded(child: _Stat(s.messages, '${stats.newMessages}', Icons.mail, AppColors.primary, () => context.go('/messages'))),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          Expanded(child: _Stat(s.rooms, '${stats.roomBookings}', Icons.meeting_room, AppColors.navySoft)),
+                          Expanded(child: _Stat(s.rooms, '${stats.roomBookings}', Icons.meeting_room, AppColors.navySoft, () => context.push('/admin/rooms'))),
                           const SizedBox(width: 10),
-                          Expanded(child: _Stat(s.printOrders, '${stats.printOrders}', Icons.print, AppColors.accentPink)),
+                          Expanded(child: _Stat(s.printOrders, '${stats.printOrders}', Icons.print, AppColors.accentPink, () => context.push('/admin/print'))),
                           const SizedBox(width: 10),
-                          Expanded(child: _Stat(s.courses, '${stats.courses}', Icons.library_books, AppColors.accentPurple)),
+                          Expanded(child: _Stat(s.courses, '${stats.courses}', Icons.library_books, AppColors.accentPurple, () => context.push('/admin/market'))),
                         ],
                       ),
                       const SizedBox(height: 22),
@@ -76,9 +131,10 @@ class AdminDashboardTab extends ConsumerWidget {
                       const SizedBox(height: 10),
                       _AdminTile(Icons.people, s.manageUsers, s.manageUsersSub, AppColors.accentBlue, () => context.go('/admin/users')),
                       _AdminTile(Icons.flag_outlined, s.manageReports, s.manageReportsSub, AppColors.error, () => context.go('/admin/reports')),
-                      _AdminTile(Icons.storefront, s.manageMarketplace, s.manageMarketplaceSub, AppColors.accentPurple, () => context.go('/admin/market')),
-                      _AdminTile(Icons.meeting_room_outlined, s.manageRooms, s.manageRoomsSub, AppColors.primary, () => context.go('/admin/rooms')),
-                      _AdminTile(Icons.print_outlined, s.managePrint, s.managePrintSub, AppColors.accentOrange, () => context.go('/admin/print')),
+                      _AdminTile(Icons.storefront, s.manageMarketplace, s.manageMarketplaceSub, AppColors.accentPurple, () => context.push('/admin/market')),
+                      _AdminTile(Icons.meeting_room_outlined, s.manageRooms, s.manageRoomsSub, AppColors.primary, () => context.push('/admin/rooms')),
+                      _AdminTile(Icons.print_outlined, s.managePrint, s.managePrintSub, AppColors.accentOrange, () => context.push('/admin/print')),
+                      _AdminTile(Icons.receipt_long_outlined, s.manageLogs, s.manageLogsSub, AppColors.navy, () => context.push('/admin/logs')),
                       _AdminTile(Icons.mail_outline, s.manageMessages, s.manageMessagesSub, AppColors.accentGreen, () => context.go('/messages')),
                     ],
                   ),
@@ -120,20 +176,28 @@ class _AdminHero extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value, this.icon, this.color);
+  const _Stat(this.label, this.value, this.icon, this.color, this.onTap);
   final String label;
   final String value;
   final IconData icon;
   final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SoftMetricCard(
-      background: color.withValues(alpha: 0.12),
-      icon: icon,
-      iconColor: color,
-      label: label,
-      value: value,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SoftMetricCard(
+          background: color.withValues(alpha: 0.12),
+          icon: icon,
+          iconColor: color,
+          label: label,
+          value: value,
+        ),
+      ),
     );
   }
 }
@@ -224,6 +288,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> with Single
           displayName: nameCtrl.text.trim(),
           bio: bioCtrl.text.trim(),
         );
+    await _logAdminAction(ref, action: 'user.updated', targetType: 'user', targetId: user.id, details: nameCtrl.text.trim());
     ref.invalidate(allUsersProvider);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.userUpdated)));
@@ -248,6 +313,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> with Single
     );
     if (ok != true || !context.mounted) return;
     await ref.read(databaseProvider).deleteUser(user.id);
+    await _logAdminAction(ref, action: 'user.deleted', targetType: 'user', targetId: user.id, details: user.email);
     ref.invalidate(allUsersProvider);
     ref.invalidate(adminStatsProvider);
     if (!context.mounted) return;
@@ -257,6 +323,13 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> with Single
   Future<void> _toggleBlock(BuildContext context, AppUser user, bool block) async {
     final s = S.of(context);
     await ref.read(databaseProvider).setUserBlocked(user.id, block);
+    await _logAdminAction(
+      ref,
+      action: block ? 'user.blocked' : 'user.unblocked',
+      targetType: 'user',
+      targetId: user.id,
+      details: user.email,
+    );
     ref.invalidate(allUsersProvider);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -270,8 +343,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> with Single
     final usersAsync = ref.watch(allUsersProvider);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(s.manageUsers),
+        automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabs,
           isScrollable: true,
@@ -297,7 +372,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> with Single
               itemCount: filtered.length,
               itemBuilder: (_, i) {
                 final u = filtered[i];
-            return Card(
+            return InkWell(
+              onTap: () => context.push('/providers/${u.id}'),
+              borderRadius: BorderRadius.circular(12),
+              child: Card(
               margin: const EdgeInsets.only(bottom: 10),
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -351,6 +429,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> with Single
                   ],
                 ),
               ),
+            ),
             );
               },
             );
@@ -372,7 +451,11 @@ class AdminReportsScreen extends ConsumerWidget {
     final reportsAsync = ref.watch(reportsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(s.manageReports)),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(s.manageReports),
+        automaticallyImplyLeading: false,
+      ),
       body: AsyncValueContent(
         value: reportsAsync,
         builder: (reports) {
@@ -409,11 +492,17 @@ class AdminReportsScreen extends ConsumerWidget {
                       ],
                       if (r.status == 'open') ...[
                         const SizedBox(height: 10),
+                        TextButton.icon(
+                          onPressed: () => context.push('/providers/${r.reportedUserId}'),
+                          icon: const Icon(Icons.person_outline, size: 18),
+                          label: Text(s.viewProfile),
+                        ),
                         Row(
                           children: [
                             TextButton(
                               onPressed: () async {
                                 await ref.read(databaseProvider).updateReportStatus(r.id, 'resolved');
+                                await _logAdminAction(ref, action: 'report.resolved', targetType: 'report', targetId: r.id);
                                 ref.invalidate(reportsProvider);
                                 ref.invalidate(adminStatsProvider);
                               },
@@ -422,6 +511,7 @@ class AdminReportsScreen extends ConsumerWidget {
                             TextButton(
                               onPressed: () async {
                                 await ref.read(databaseProvider).updateReportStatus(r.id, 'dismissed');
+                                await _logAdminAction(ref, action: 'report.dismissed', targetType: 'report', targetId: r.id);
                                 ref.invalidate(reportsProvider);
                                 ref.invalidate(adminStatsProvider);
                               },
@@ -454,47 +544,48 @@ class AdminMarketScreen extends ConsumerWidget {
     final servicesAsync = ref.watch(servicesProvider);
     final bookingsAsync = ref.watch(serviceBookingsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.manageMarketplace)),
+    return AdminSubpageScaffold(
+      title: s.manageMarketplace,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(s.bookings, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          _AdminSectionHeader(title: s.bookings, icon: Icons.event_available),
           const SizedBox(height: 8),
           AsyncValueContent(
             value: bookingsAsync,
             builder: (bookings) {
-              if (bookings.isEmpty) return Text(s.noBookings, style: const TextStyle(color: AppColors.textSecondary));
+              if (bookings.isEmpty) {
+                return _AdminEmptyHint(text: s.noBookings);
+              }
               return Column(
-                children: bookings
-                    .take(8)
-                    .map(
-                      (b) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(b.serviceTitle ?? b.serviceId, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text('${b.clientName} → ${b.providerName}\n${Money.format(b.totalCents)}'),
-                        isThreeLine: true,
-                      ),
-                    )
-                    .toList(),
+                children: bookings.map((b) => _AdminRecordCard(
+                      title: b.serviceTitle ?? b.serviceId,
+                      subtitle: '${b.clientName} → ${b.providerName}',
+                      trailing: Money.format(b.totalCents),
+                      icon: Icons.handshake_outlined,
+                      iconColor: AppColors.accentGreen,
+                    )).toList(),
               );
             },
           ),
-          const SizedBox(height: 16),
-          Text(s.courses, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 20),
+          _AdminSectionHeader(title: s.courses, icon: Icons.menu_book_outlined),
           AsyncValueContent(
             value: coursesAsync,
             builder: (courses) => Column(
               children: courses
                   .map(
-                    (c) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(c.title),
-                      subtitle: Text(c.teacherName ?? ''),
-                      trailing: IconButton(
+                    (c) => _AdminRecordCard(
+                      title: c.title,
+                      subtitle: c.teacherName ?? '',
+                      icon: Icons.school_outlined,
+                      iconColor: AppColors.accentPurple,
+                      onTap: () => context.push('/courses/${c.id}'),
+                      trailingAction: IconButton(
                         icon: const Icon(Icons.delete_outline, color: AppColors.error),
                         onPressed: () async {
                           await ref.read(databaseProvider).deleteCourse(c.id);
+                          await _logAdminAction(ref, action: 'course.deleted', targetType: 'course', targetId: c.id, details: c.title);
                           ref.invalidate(coursesProvider);
                           ref.invalidate(adminStatsProvider);
                         },
@@ -504,21 +595,25 @@ class AdminMarketScreen extends ConsumerWidget {
                   .toList(),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(s.services, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 16),
+          _AdminSectionHeader(title: s.services, icon: Icons.design_services_outlined),
           AsyncValueContent(
             value: servicesAsync,
             builder: (services) => Column(
               children: services
                   .map(
-                    (svc) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(svc.title),
-                      subtitle: Text(svc.providerName ?? ''),
-                      trailing: IconButton(
+                    (svc) => _AdminRecordCard(
+                      title: svc.title,
+                      subtitle: svc.providerName ?? '',
+                      trailing: svc.priceLabel,
+                      icon: Icons.work_outline,
+                      iconColor: AppColors.primary,
+                      onTap: () => context.push('/services/${svc.id}'),
+                      trailingAction: IconButton(
                         icon: const Icon(Icons.delete_outline, color: AppColors.error),
                         onPressed: () async {
                           await ref.read(databaseProvider).deleteService(svc.id);
+                          await _logAdminAction(ref, action: 'service.deleted', targetType: 'service', targetId: svc.id, details: svc.title);
                           ref.invalidate(servicesProvider);
                           ref.invalidate(adminStatsProvider);
                         },
@@ -545,11 +640,12 @@ class AdminRoomsScreen extends ConsumerWidget {
     final roomsAsync = ref.watch(roomsProvider);
     final bookingsAsync = ref.watch(roomBookingsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.manageRooms)),
+    return AdminSubpageScaffold(
+      title: s.manageRooms,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _AdminSectionHeader(title: s.rooms, icon: Icons.meeting_room_outlined),
           AsyncValueContent(
             value: roomsAsync,
             builder: (rooms) => Column(
@@ -566,6 +662,13 @@ class AdminRoomsScreen extends ConsumerWidget {
                         value: room.available,
                         onChanged: (v) async {
                           await ref.read(databaseProvider).setRoomAvailability(room.id, v);
+                          await _logAdminAction(
+                            ref,
+                            action: v ? 'room.enabled' : 'room.disabled',
+                            targetType: 'room',
+                            targetId: room.id,
+                            details: room.name,
+                          );
                           ref.invalidate(roomsProvider);
                         },
                       ),
@@ -574,22 +677,27 @@ class AdminRoomsScreen extends ConsumerWidget {
                   .toList(),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(s.roomBookings, style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 16),
+          _AdminSectionHeader(title: s.roomBookings, icon: Icons.calendar_month_outlined),
           const SizedBox(height: 8),
           AsyncValueContent(
             value: bookingsAsync,
-            builder: (bookings) => Column(
-              children: bookings
-                  .map(
-                    (b) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(b.roomName ?? b.roomId),
-                      subtitle: Text('${b.userName} · ${b.billing} · ${Money.format(b.totalCents)}'),
-                    ),
-                  )
-                  .toList(),
-            ),
+            builder: (bookings) {
+              if (bookings.isEmpty) return _AdminEmptyHint(text: s.noBookings);
+              return Column(
+                children: bookings
+                    .map(
+                      (b) => _AdminRecordCard(
+                        title: b.roomName ?? b.roomId,
+                        subtitle: '${b.userName} · ${b.billing}',
+                        trailing: Money.format(b.totalCents),
+                        icon: Icons.event_seat_outlined,
+                        iconColor: AppColors.navySoft,
+                      ),
+                    )
+                    .toList(),
+              );
+            },
           ),
         ],
       ),
@@ -608,49 +716,53 @@ class AdminPrintScreen extends ConsumerWidget {
     final ordersAsync = ref.watch(printOrdersProvider);
     final servicesAsync = ref.watch(printServicesProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.managePrint)),
+    return AdminSubpageScaffold(
+      title: s.managePrint,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(s.printCatalog, style: const TextStyle(fontWeight: FontWeight.w800)),
+          _AdminSectionHeader(title: s.printCatalog, icon: Icons.inventory_2_outlined),
           AsyncValueContent(
             value: servicesAsync,
             builder: (items) => Column(
               children: items
-                  .map((p) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(p.title),
-                        subtitle: Text('${p.priceLabel} / ${p.unit}'),
-                      ))
+                  .map(
+                    (p) => _AdminRecordCard(
+                      title: p.title,
+                      subtitle: p.description,
+                      trailing: '${p.priceLabel} / ${p.unit}',
+                      icon: Icons.print_outlined,
+                      iconColor: AppColors.accentOrange,
+                    ),
+                  )
                   .toList(),
             ),
           ),
           const SizedBox(height: 16),
-          Text(s.printOrders, style: const TextStyle(fontWeight: FontWeight.w800)),
+          _AdminSectionHeader(title: s.printOrders, icon: Icons.receipt_outlined),
           AsyncValueContent(
             value: ordersAsync,
             builder: (orders) {
-              if (orders.isEmpty) return Text(s.noOrders, style: const TextStyle(color: AppColors.textSecondary));
+              if (orders.isEmpty) return _AdminEmptyHint(text: s.noOrders);
               return Column(
                 children: orders.map((o) {
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text(o.serviceTitle ?? o.serviceId, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: Text('${o.userName} · x${o.quantity} · ${Money.format(o.totalCents)}\n${o.status}'),
-                      isThreeLine: true,
-                      trailing: o.status == 'pending'
-                          ? IconButton(
-                              icon: const Icon(Icons.check_circle, color: AppColors.success),
-                              onPressed: () async {
-                                await ref.read(databaseProvider).updatePrintOrderStatus(o.id, 'done');
-                                ref.invalidate(printOrdersProvider);
-                                ref.invalidate(adminStatsProvider);
-                              },
-                            )
-                          : null,
-                    ),
+                  return _AdminRecordCard(
+                    title: o.serviceTitle ?? o.serviceId,
+                    subtitle: '${o.userName} · x${o.quantity} · ${o.status}',
+                    trailing: Money.format(o.totalCents),
+                    icon: Icons.local_shipping_outlined,
+                    iconColor: o.status == 'pending' ? AppColors.accentOrange : AppColors.success,
+                    trailingAction: o.status == 'pending'
+                        ? FilledButton(
+                            onPressed: () async {
+                              await ref.read(databaseProvider).updatePrintOrderStatus(o.id, 'done');
+                              await _logAdminAction(ref, action: 'print_order.done', targetType: 'print_order', targetId: o.id);
+                              ref.invalidate(printOrdersProvider);
+                              ref.invalidate(adminStatsProvider);
+                            },
+                            child: Text(s.markDone),
+                          )
+                        : null,
                   );
                 }).toList(),
               );
@@ -659,6 +771,213 @@ class AdminPrintScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+// ── Logs & payments ─────────────────────────────────────────────────
+
+class AdminLogsScreen extends ConsumerStatefulWidget {
+  const AdminLogsScreen({super.key});
+
+  @override
+  ConsumerState<AdminLogsScreen> createState() => _AdminLogsScreenState();
+}
+
+class _AdminLogsScreenState extends ConsumerState<AdminLogsScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final paymentsAsync = ref.watch(paymentLogsProvider);
+    final activityAsync = ref.watch(adminActivityLogsProvider);
+
+    return AdminSubpageScaffold(
+      title: s.manageLogs,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TabBar(
+            controller: _tabs,
+            tabs: [
+              Tab(text: s.paymentLogs),
+              Tab(text: s.activityLogs),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabs,
+              children: [
+                AsyncValueContent(
+                  value: paymentsAsync,
+                  builder: (logs) {
+                    if (logs.isEmpty) return Center(child: Text(s.noPaymentLogs));
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: logs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) {
+                        final log = logs[i];
+                        return _AdminRecordCard(
+                          title: log.title,
+                          subtitle: '${log.userName ?? s.anonymousUser} · ${log.purpose} · ${log.gateway}',
+                          trailing: log.amountLabel,
+                          icon: log.isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                          iconColor: log.isSuccess ? AppColors.success : AppColors.error,
+                          footer: log.reference ?? _formatLogTime(context, log.createdAt),
+                        );
+                      },
+                    );
+                  },
+                ),
+                AsyncValueContent(
+                  value: activityAsync,
+                  builder: (logs) {
+                    if (logs.isEmpty) return Center(child: Text(s.noActivityLogs));
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: logs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) {
+                        final log = logs[i];
+                        return _AdminRecordCard(
+                          title: log.action,
+                          subtitle: log.details ?? log.targetId ?? '',
+                          trailing: log.actorName ?? s.system,
+                          icon: Icons.history,
+                          iconColor: AppColors.navy,
+                          footer: _formatLogTime(context, log.createdAt),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminSectionHeader extends StatelessWidget {
+  const _AdminSectionHeader({required this.title, required this.icon});
+
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      ],
+    );
+  }
+}
+
+class _AdminEmptyHint extends StatelessWidget {
+  const _AdminEmptyHint({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(text, style: const TextStyle(color: AppColors.textSecondary)),
+    );
+  }
+}
+
+class _AdminRecordCard extends StatelessWidget {
+  const _AdminRecordCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    this.trailing,
+    this.footer,
+    this.onTap,
+    this.trailingAction,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final String? trailing;
+  final String? footer;
+  final VoidCallback? onTap;
+  final Widget? trailingAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.35)),
+                    if (footer != null) ...[
+                      const SizedBox(height: 6),
+                      Text(footer!, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null)
+                Text(trailing!, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              if (trailingAction != null) trailingAction!,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatLogTime(BuildContext context, String iso) {
+  try {
+    final dt = DateTime.parse(iso).toLocal();
+    return DateFormat('d MMM yyyy · HH:mm').format(dt);
+  } catch (_) {
+    return iso;
   }
 }
 
@@ -696,7 +1015,9 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

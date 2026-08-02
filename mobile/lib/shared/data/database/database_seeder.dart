@@ -10,17 +10,195 @@ abstract final class DatabaseSeeder {
 
   static Future<void> seedIfNeeded(Database db) async {
     final row = await db.query('app_meta', where: 'key = ?', whereArgs: ['seeded']);
-    if (row.isNotEmpty && row.first['value'] == '1') return;
+    if (row.isEmpty || row.first['value'] != '1') {
+      await db.transaction((txn) async {
+        await _seedUsers(txn);
+        await _seedCourses(txn);
+        await _seedServices(txn);
+        await _seedJobs(txn);
+        await _seedGames(txn);
+        await _seedHubFacilities(txn);
+        await _seedAdminLogs(txn);
+        await txn.insert('app_meta', {'key': 'seeded', 'value': '1'});
+      });
+    } else {
+      await _seedAdminLogsIfEmpty(db);
+    }
+  }
 
-    await db.transaction((txn) async {
-      await _seedUsers(txn);
-      await _seedCourses(txn);
-      await _seedServices(txn);
-      await _seedJobs(txn);
-      await _seedGames(txn);
-      await _seedHubFacilities(txn);
-      await txn.insert('app_meta', {'key': 'seeded', 'value': '1'});
-    });
+  /// Backfill demo logs on existing installs that predate log seeding.
+  static Future<void> _seedAdminLogsIfEmpty(Database db) async {
+    final count = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM payment_logs'),
+        ) ??
+        0;
+    if (count > 0) return;
+    await db.transaction(_seedAdminLogs);
+  }
+
+  static Future<void> _seedAdminLogs(Transaction txn) async {
+    final payments = [
+      {
+        'id': 'pay_seed_1',
+        'user_id': 'user_demo',
+        'user_name': 'Alex Learner',
+        'purpose': 'subscription',
+        'title': 'Premium',
+        'amount_cents': 199000,
+        'gateway': 'edahabia',
+        'status': 'success',
+        'reference': 'EDH-482901',
+        'item_id': null,
+        'created_at': '2026-07-28T10:15:00Z',
+      },
+      {
+        'id': 'pay_seed_2',
+        'user_id': 'user_demo',
+        'user_name': 'Alex Learner',
+        'purpose': 'course',
+        'title': 'Advanced Flutter Patterns',
+        'amount_cents': 499900,
+        'gateway': 'cib',
+        'status': 'success',
+        'reference': 'CIB-773120',
+        'item_id': 'course_3',
+        'created_at': '2026-07-27T14:42:00Z',
+      },
+      {
+        'id': 'pay_seed_3',
+        'user_id': 'user_client_1',
+        'user_name': 'Karim Boudiaf',
+        'purpose': 'service',
+        'title': 'Mobile App UI Design',
+        'amount_cents': 48000000,
+        'gateway': 'edahabia',
+        'status': 'success',
+        'reference': 'EDH-991044',
+        'item_id': 'service_1',
+        'created_at': '2026-07-26T09:20:00Z',
+      },
+      {
+        'id': 'pay_seed_4',
+        'user_id': 'user_teacher_maria',
+        'user_name': 'Maria Chen',
+        'purpose': 'hubRoom',
+        'title': 'Studio A — Enregistrement',
+        'amount_cents': 750000,
+        'gateway': 'card',
+        'status': 'success',
+        'reference': 'CARD-220817',
+        'item_id': 'room_studio_a',
+        'created_at': '2026-07-25T16:00:00Z',
+      },
+      {
+        'id': 'pay_seed_5',
+        'user_id': 'user_client_1',
+        'user_name': 'Karim Boudiaf',
+        'purpose': 'hubPrint',
+        'title': 'Flyers & supports cours',
+        'amount_cents': 8000,
+        'gateway': 'cib',
+        'status': 'success',
+        'reference': 'CIB-554902',
+        'item_id': 'print_flyers',
+        'created_at': '2026-07-24T11:30:00Z',
+      },
+      {
+        'id': 'pay_seed_6',
+        'user_id': 'user_demo',
+        'user_name': 'Alex Learner',
+        'purpose': 'aiTokens',
+        'title': 'Pack 5 tokens',
+        'amount_cents': 0,
+        'gateway': 'coins',
+        'status': 'success',
+        'reference': 'COIN-338201',
+        'item_id': null,
+        'created_at': '2026-07-23T18:05:00Z',
+      },
+      {
+        'id': 'pay_seed_7',
+        'user_id': 'user_demo',
+        'user_name': 'Alex Learner',
+        'purpose': 'course',
+        'title': 'UI/UX Fundamentals',
+        'amount_cents': 299900,
+        'gateway': 'edahabia',
+        'status': 'failed',
+        'reference': 'EDH-000000',
+        'item_id': 'course_4',
+        'created_at': '2026-07-22T08:12:00Z',
+      },
+    ];
+    for (final p in payments) {
+      await txn.insert('payment_logs', p);
+    }
+
+    final activities = [
+      {
+        'id': 'act_seed_1',
+        'actor_id': 'user_admin',
+        'actor_name': 'Samooth Admin',
+        'action': 'report.resolved',
+        'target_type': 'report',
+        'target_id': 'rep_seed_1',
+        'details': 'Reviewed profile — warning sent to teacher',
+        'created_at': '2026-07-28T09:00:00Z',
+      },
+      {
+        'id': 'act_seed_2',
+        'actor_id': 'user_admin',
+        'actor_name': 'Samooth Admin',
+        'action': 'room.disabled',
+        'target_type': 'room',
+        'target_id': 'room_atelier',
+        'details': 'Atelier Design — maintenance scheduled',
+        'created_at': '2026-07-27T15:30:00Z',
+      },
+      {
+        'id': 'act_seed_3',
+        'actor_id': 'user_admin',
+        'actor_name': 'Samooth Admin',
+        'action': 'print_order.done',
+        'target_type': 'print_order',
+        'target_id': 'po_seed_1',
+        'details': 'Flyers order marked ready for pickup',
+        'created_at': '2026-07-26T13:00:00Z',
+      },
+      {
+        'id': 'act_seed_4',
+        'actor_id': 'user_admin',
+        'actor_name': 'Samooth Admin',
+        'action': 'user.updated',
+        'target_type': 'user',
+        'target_id': 'user_teacher_alex',
+        'details': 'Display name corrected after report',
+        'created_at': '2026-07-25T10:45:00Z',
+      },
+      {
+        'id': 'act_seed_5',
+        'actor_id': 'user_admin',
+        'actor_name': 'Samooth Admin',
+        'action': 'course.deleted',
+        'target_type': 'course',
+        'target_id': 'course_removed',
+        'details': 'Removed duplicate listing (spam)',
+        'created_at': '2026-07-24T17:20:00Z',
+      },
+      {
+        'id': 'act_seed_6',
+        'actor_id': 'user_admin',
+        'actor_name': 'Samooth Admin',
+        'action': 'user.blocked',
+        'target_type': 'user',
+        'target_id': 'user_spam',
+        'details': 'Temporary block — suspicious links',
+        'created_at': '2026-07-23T12:00:00Z',
+      },
+    ];
+    for (final a in activities) {
+      await txn.insert('admin_activity_logs', a);
+    }
   }
 
   static Future<void> _seedUsers(Transaction txn) async {

@@ -117,6 +117,26 @@ class PaymentResultScreen extends StatelessWidget {
                   ),
                 ),
               ],
+              if (ok && args.purpose == PaymentPurpose.subscription) ...[
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => context.go('/learn'),
+                  child: Text(
+                    s.exploreMasterclasses,
+                    style: TextStyle(color: ok ? Colors.white70 : AppColors.primary),
+                  ),
+                ),
+              ],
+              if (ok && (args.purpose == PaymentPurpose.hubRoom || args.purpose == PaymentPurpose.hubPrint)) ...[
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => context.go('/hub'),
+                  child: Text(
+                    s.bookInHub,
+                    style: TextStyle(color: ok ? Colors.white70 : AppColors.primary),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

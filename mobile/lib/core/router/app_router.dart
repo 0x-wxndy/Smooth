@@ -14,6 +14,8 @@ import '../../features/jobs/presentation/jobs_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/feedback_screen.dart';
 import '../../features/profile/presentation/settings_screen.dart';
+import '../../features/profile/presentation/about_screen.dart';
+import '../../features/profile/presentation/terms_privacy_screen.dart';
 import '../../features/profile/presentation/provider_profile_screen.dart';
 import '../../features/games/presentation/games_screen.dart';
 import '../../features/games/presentation/game_play_screen.dart';
@@ -22,6 +24,8 @@ import '../../features/courses/presentation/lesson_player_screen.dart';
 import '../../features/marketplace/presentation/service_detail_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/ai_assistant/presentation/ai_chat_screen.dart';
+import '../../features/profile/presentation/moments_screen.dart';
+import '../../features/teacher/presentation/teacher_course_detail_screen.dart';
 import '../../features/teacher/presentation/teacher_studio_screens.dart';
 import '../../features/teacher/presentation/post_listing_screens.dart';
 import '../../features/payments/presentation/checkout_screen.dart';
@@ -88,7 +92,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/teacher/courses',
-            pageBuilder: (_, __) => const NoTransitionPage(child: TeacherCoursesScreen()),
+            pageBuilder: (context, state) {
+              final tab = state.uri.queryParameters['tab'];
+              final initialTab = tab == 'students' ? 1 : 0;
+              return NoTransitionPage(child: TeacherCoursesScreen(initialTabIndex: initialTab));
+            },
           ),
           GoRoute(
             path: '/teacher/services',
@@ -110,23 +118,23 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/admin/messages',
             pageBuilder: (_, __) => const NoTransitionPage(child: AdminMessagesScreen()),
           ),
+          GoRoute(
+            path: '/admin/market',
+            pageBuilder: (_, __) => const NoTransitionPage(child: AdminMarketScreen()),
+          ),
+          GoRoute(
+            path: '/admin/rooms',
+            pageBuilder: (_, __) => const NoTransitionPage(child: AdminRoomsScreen()),
+          ),
+          GoRoute(
+            path: '/admin/print',
+            pageBuilder: (_, __) => const NoTransitionPage(child: AdminPrintScreen()),
+          ),
+          GoRoute(
+            path: '/admin/logs',
+            pageBuilder: (_, __) => const NoTransitionPage(child: AdminLogsScreen()),
+          ),
         ],
-      ),
-      GoRoute(
-        path: '/admin/market',
-        builder: (_, __) => const AdminMarketScreen(),
-      ),
-      GoRoute(
-        path: '/admin/rooms',
-        builder: (_, __) => const AdminRoomsScreen(),
-      ),
-      GoRoute(
-        path: '/admin/print',
-        builder: (_, __) => const AdminPrintScreen(),
-      ),
-      GoRoute(
-        path: '/admin/messages',
-        builder: (_, __) => const AdminMessagesScreen(),
       ),
       GoRoute(
         path: '/hub/rooms',
@@ -171,6 +179,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const PostServiceScreen(),
       ),
       GoRoute(
+        path: '/teacher/courses/:id',
+        builder: (_, state) => TeacherCourseDetailScreen(courseId: state.pathParameters['id']!),
+      ),
+      GoRoute(
         path: '/courses/:id',
         builder: (_, state) => CourseDetailScreen(courseId: state.pathParameters['id']!),
       ),
@@ -194,6 +206,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
       GoRoute(path: '/profile/feedback', builder: (_, __) => const FeedbackScreen()),
       GoRoute(path: '/profile/settings', builder: (_, __) => const SettingsScreen()),
+      GoRoute(path: '/profile/about', builder: (_, __) => const AboutScreen()),
+      GoRoute(path: '/profile/terms', builder: (_, __) => const TermsPrivacyScreen()),
+      GoRoute(path: '/profile/moments', builder: (_, __) => const MomentsScreen()),
+      GoRoute(
+        path: '/profile/moments/:userId',
+        builder: (_, state) => MomentsScreen(userId: state.pathParameters['userId']),
+      ),
       GoRoute(path: '/ai', builder: (_, __) => const AiChatScreen()),
       GoRoute(path: '/games', builder: (_, __) => const GamesTab()),
       GoRoute(

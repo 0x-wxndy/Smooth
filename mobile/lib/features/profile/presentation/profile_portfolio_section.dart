@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/publication_model.dart';
@@ -7,11 +8,13 @@ import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
+import '../../../shared/widgets/profile_cover_header.dart';
 import '../../../shared/widgets/cards.dart';
 import 'portfolio_gallery.dart';
+import 'publication_tile.dart';
+import 'publication_media_helper.dart';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'publication_media_helper.dart';
 
 final userPublicationsProvider = FutureProvider.family<List<Publication>, String>((ref, userId) async {
   return ref.watch(databaseProvider).getPublications(authorId: userId);
@@ -33,26 +36,53 @@ class ProfilePortfolioSection extends ConsumerWidget {
     final servicesAsync = ref.watch(
       role == UserRole.teacher
           ? myServicesProvider
-          : role == UserRole.client
-              ? bookedServicesProvider
-              : bookedServicesProvider,
+          : bookedServicesProvider,
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(s.portfolio, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            const SizedBox(height: 12),
-            AsyncValueContent(
+    final sectionTitle = switch (role) {
+      UserRole.teacher => s.portfolio,
+      UserRole.client => s.clientShowcaseTitle,
+      _ => s.learningJourney,
+    };
+    final sectionSubtitle = switch (role) {
+      UserRole.teacher => s.previousWork,
+      UserRole.client => s.clientShowcaseSub,
+      _ => s.learningJourneySub,
+    };
+    final sectionIcon = switch (role) {
+      UserRole.teacher => Icons.collections_outlined,
+      UserRole.client => Icons.work_outline_rounded,
+      _ => Icons.route_outlined,
+    };
+    final feedLabel = role == UserRole.learner ? s.moments : s.publications;
+
+    return ProfileSectionCard(
+      title: sectionTitle,
+      subtitle: sectionSubtitle,
+      icon: sectionIcon,
+      iconColor: AppColors.accentPurple,
+      action: switch (role) {
+        UserRole.teacher || UserRole.client => TextButton.icon(
+            onPressed: () => showNewPublicationSheet(
+              context: context,
+              ref: ref,
+              userId: userId,
+              defaultKind: role == UserRole.client ? 'offer' : 'post',
+            ),
+            icon: const Icon(Icons.add, size: 16),
+            label: Text(s.newPublication, style: const TextStyle(fontSize: 12)),
+          ),
+        UserRole.learner => TextButton.icon(
+            onPressed: () => context.push('/profile/moments'),
+            icon: const Icon(Icons.auto_stories_outlined, size: 16),
+            label: Text(s.moments, style: const TextStyle(fontSize: 12)),
+          ),
+        _ => null,
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AsyncValueContent(
               value: coursesAsync,
               builder: (courses) => AsyncValueContent(
                 value: servicesAsync,
@@ -71,7 +101,7 @@ class ProfilePortfolioSection extends ConsumerWidget {
                       Expanded(
                         child: _PortfolioStat(
                           icon: Icons.design_services_outlined,
-                          label: s.services,
+                          label: role == UserRole.learner ? s.bookedServicesLabel : s.services,
                           value: '${services.length}',
                           color: AppColors.primary,
                         ),
@@ -96,24 +126,7 @@ class ProfilePortfolioSection extends ConsumerWidget {
             
             if (role == UserRole.teacher) ...[
               const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(s.previousWork, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.pastelLavender,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Placeholder images',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentPurple),
-                    ),
-                  ),
-                ],
-              ),
+              Text(s.previousWork, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               const SizedBox(height: 10),
               PortfolioGallery(items: mockPortfolioItems(userId)),
               const SizedBox(height: 16),
@@ -137,45 +150,29 @@ class ProfilePortfolioSection extends ConsumerWidget {
                 },
               ),
             ],
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(s.publications, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                ),
-                if (role == UserRole.teacher || role == UserRole.client)
-                  TextButton.icon(
-                    onPressed: () => showNewPublicationSheet(
-                      context: context,
-                      ref: ref,
-                      userId: userId,
-                      defaultKind: role == UserRole.client ? 'offer' : 'post',
-                    ),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: Text(s.newPublication, style: const TextStyle(fontSize: 12)),
-                  ),
-              ],
-            ),
+            const SizedBox(height: 16),
+            Text(feedLabel, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 8),
             AsyncValueContent(
               value: pubsAsync,
               builder: (pubs) {
                 if (pubs.isEmpty) {
-                  return Text(s.noPublications, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13));
+                  return Text(
+                    role == UserRole.learner ? s.momentsEmptyHint : s.noPublications,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  );
                 }
                 return Column(
-                  children: pubs.take(4).map((p) => _PublicationTile(publication: p)).toList(),
+                  children: pubs.take(4).map((p) => PublicationTile(publication: p)).toList(),
                 );
               },
             ),
           ],
         ),
-      ),
     );
   }
-
-
 }
+
 Future<void> showNewPublicationSheet({
   required BuildContext context,
   required WidgetRef ref,
@@ -343,84 +340,6 @@ class _PortfolioStat extends StatelessWidget {
           const SizedBox(height: 6),
           Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: color)),
           Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-class _PublicationTile extends StatelessWidget {
-  const _PublicationTile({required this.publication});
-
-  final Publication publication;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (publication.isOffer || publication.isAnnouncement)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: publication.isOffer ? AppColors.accentPurple.withValues(alpha: 0.15) : AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                publication.isOffer ? 'Offer' : 'Announcement',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: publication.isOffer ? AppColors.accentPurple : AppColors.primary,
-                ),
-              ),
-            ),
-          Text(publication.body, style: const TextStyle(fontSize: 13, height: 1.35)),
-          if (publication.imagePaths.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 90,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: publication.imagePaths.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.file(
-                    File(publication.imagePaths[i]),
-                    width: 90,
-                    height: 90,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(width: 90, height: 90, color: AppColors.surfaceVariant),
-                  ),
-                ),
-              ),
-            ),
-          ],
-          if (publication.hashtags.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: publication.hashtags
-                  .map(
-                    (h) => Text(
-                      h.startsWith('#') ? h : '#$h',
-                      style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
         ],
       ),
     );

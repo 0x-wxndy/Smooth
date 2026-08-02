@@ -13,11 +13,14 @@ import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/smooth_button.dart';
+import '../../../shared/widgets/profile_cover_header.dart';
 import 'portfolio_gallery.dart';
 import 'profile_portfolio_section.dart' show userPublicationsProvider;
 import 'provider_actions.dart';
 import 'provider_feedback.dart';
+import 'provider_review_form.dart';
 import 'provider_reviews_service.dart';
+import 'publication_tile.dart';
 
 final providerProfileProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
   return ref.watch(databaseProvider).findUserById(userId);
@@ -54,30 +57,60 @@ class ProviderProfileScreen extends ConsumerWidget {
           if (user == null) {
             return Center(child: Text(s.userNotFound));
           }
-          final canInteract = me != null && me.id != user.id && user.role != UserRole.admin;
+          final canContact = me != null && me.id != user.id && user.role != UserRole.admin;
+          final canReview = canLeaveProviderReview(me, providerId: userId, providerRole: user.role);
 
           return CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: 200,
+                expandedHeight: 220,
                 pinned: true,
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(user.displayName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  background: Container(
-                    decoration: const BoxDecoration(gradient: AppColors.gradientPrimary),
-                    child: Center(
-                      child: CircleAvatar(
-                        radius: 44,
-                        backgroundColor: Colors.white24,
-                        backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
-                        child: user.avatarUrl == null
-                            ? Text(
-                                user.displayName.characters.first.toUpperCase(),
-                                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white),
-                              )
-                            : null,
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        profileCoverForUser(user),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          decoration: const BoxDecoration(gradient: AppColors.gradientPrimary),
+                        ),
                       ),
-                    ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.2),
+                              Colors.black.withValues(alpha: 0.55),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: const Alignment(0, 0.35),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 44,
+                            backgroundColor: AppColors.primary,
+                            backgroundImage: profileImageProvider(avatarForUser(user)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -111,32 +144,22 @@ class ProviderProfileScreen extends ConsumerWidget {
                           s: s,
                         ),
                       ),
-                      if (canInteract) ...[
+                      if (canContact) ...[
                         const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => showContactProviderSheet(context: context, ref: ref, provider: user),
-                                icon: const Icon(Icons.mail_outline_rounded, size: 18),
-                                label: Text(s.contactProvider),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => showLeaveReviewSheet(
-                                  context: context,
-                                  ref: ref,
-                                  providerId: userId,
-                                  providerName: user.displayName,
-                                ),
-                                style: FilledButton.styleFrom(backgroundColor: AppColors.accentPurple),
-                                icon: const Icon(Icons.rate_review_outlined, size: 18),
-                                label: Text(s.leaveReview),
-                              ),
-                            ),
-                          ],
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => showContactProviderSheet(context: context, ref: ref, provider: user),
+                            icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                            label: Text(s.contactProvider),
+                          ),
+                        ),
+                      ],
+                      if (canReview) ...[
+                        const SizedBox(height: 16),
+                        ProviderReviewForm(
+                          providerId: userId,
+                          providerName: user.displayName,
                         ),
                       ],
                       const SizedBox(height: 22),
@@ -208,7 +231,23 @@ class ProviderProfileScreen extends ConsumerWidget {
                         },
                       ),
                       const SizedBox(height: 22),
-                      Text(s.publications, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(s.publications, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                          ),
+                          AsyncValueContent(
+                            value: pubsAsync,
+                            builder: (pubs) {
+                              if (pubs.isEmpty) return const SizedBox.shrink();
+                              return TextButton(
+                                onPressed: () => context.push('/profile/moments/$userId'),
+                                child: Text(s.seeAll),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 10),
                       AsyncValueContent(
                         value: pubsAsync,
@@ -217,22 +256,11 @@ class ProviderProfileScreen extends ConsumerWidget {
                             return Text(s.noPublications, style: const TextStyle(color: AppColors.textSecondary));
                           }
                           return Column(
-                            children: pubs.take(4).map((p) {
-                              return Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceVariant,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(p.body, style: const TextStyle(fontSize: 13, height: 1.35)),
-                              );
-                            }).toList(),
+                            children: pubs.take(4).map((p) => PublicationTile(publication: p)).toList(),
                           );
                         },
                       ),
-                      if (canInteract) ...[
+                      if (canContact) ...[
                         const SizedBox(height: 16),
                         SmoothButton(
                           label: s.reportUser,

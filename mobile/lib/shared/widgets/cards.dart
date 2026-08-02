@@ -303,52 +303,65 @@ class FreelancerMiniCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: 132,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
         decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(
-              radius: 28,
+              radius: 24,
               backgroundImage: NetworkImage(avatarUrl),
               onBackgroundImageError: (_, __) {},
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
             ),
             Text(
               role,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
             ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 4,
-              children: tags
-                  .take(2)
-                  .map(
-                    (t) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(t, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600)),
-                    ),
-                  )
-                  .toList(),
-            ),
+            if (tags.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.pastelLavender,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  tags.first,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.accentPurple),
+                ),
+              ),
+            ],
             const SizedBox(height: 6),
             Text(
               '★ ${rating.toStringAsFixed(1)} · $rate',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.accentOrange),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentOrange),
             ),
           ],
         ),

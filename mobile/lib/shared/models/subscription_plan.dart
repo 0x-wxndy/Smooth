@@ -1,3 +1,5 @@
+import '../../core/config/app_config.dart';
+
 enum SubscriptionPlan {
   free,
   premium,
@@ -22,4 +24,25 @@ extension SubscriptionPlanX on SubscriptionPlan {
       };
 
   bool get isPaid => this != SubscriptionPlan.free;
+
+  /// Free tier: max enrolled masterclasses; paid tiers: unlimited.
+  int? get masterclassLimit => switch (this) {
+        SubscriptionPlan.free => 3,
+        _ => null,
+      };
+
+  /// Daily AI messages included with the plan.
+  int get aiDailyLimit => switch (this) {
+        SubscriptionPlan.free => AppConfig.aiDailyLimit,
+        SubscriptionPlan.premium => 20,
+        SubscriptionPlan.vip => 999,
+      };
+
+  /// Paid tiers include premium (paid) courses without per-course checkout.
+  bool get includesPaidCourses => isPaid;
+
+  bool get hasSourceFiles => isPaid;
+  bool get hasPriorityReview => isPaid;
+  bool get hasWebinars => isPaid;
+  bool get hasMentoring => this == SubscriptionPlan.vip;
 }

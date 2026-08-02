@@ -60,6 +60,14 @@ class _EdahabiaGatewayScreenState extends State<EdahabiaGatewayScreen> {
 
     if (!fail) {
       await PaymentFulfillment.apply(context, widget.args, PaymentGateway.edahabia);
+    } else {
+      await PaymentFulfillment.logPayment(
+        context,
+        args: widget.args,
+        gateway: PaymentGateway.edahabia,
+        success: false,
+        reference: ref,
+      );
     }
 
     if (!mounted) return;

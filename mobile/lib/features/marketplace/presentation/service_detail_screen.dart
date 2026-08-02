@@ -10,6 +10,7 @@ import '../../../shared/widgets/smooth_button.dart';
 import '../../../shared/widgets/provider_name_link.dart';
 import '../../profile/presentation/provider_actions.dart';
 import '../../profile/presentation/provider_profile_screen.dart';
+import '../../profile/presentation/provider_review_form.dart';
 
 class ServiceDetailScreen extends ConsumerWidget {
   const ServiceDetailScreen({super.key, required this.serviceId});
@@ -19,14 +20,19 @@ class ServiceDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final serviceAsync = ref.watch(serviceProvider(serviceId));
+    final me = ref.watch(authProvider).user;
     final s = S.of(context);
 
     return AsyncValueContent(
       value: serviceAsync,
       builder: (service) {
         if (service == null) {
-          return const Scaffold(body: Center(child: Text('Service not found')));
+          return Scaffold(body: Center(child: Text(s.serviceNotFound)));
         }
+
+        final canReview = service.providerId != null &&
+            canLeaveProviderReview(me, providerId: service.providerId!);
+        final isOwner = me?.id == service.providerId;
 
         return Scaffold(
           appBar: AppBar(title: Text(s.services)),
@@ -49,7 +55,7 @@ class ServiceDetailScreen extends ConsumerWidget {
                       providerId: service.providerId,
                     ),
                   Text(
-                    '★ ${service.ratingAvg} (${service.reviewCount} reviews)',
+                    '★ ${service.ratingAvg} (${s.reviewsLabel(service.reviewCount)})',
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
@@ -89,14 +95,23 @@ class ServiceDetailScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              if (canReview) ...[
+                const SizedBox(height: 24),
+                ProviderReviewForm(
+                  providerId: service.providerId!,
+                  providerName: service.providerName ?? 'Provider',
+                  contextLabel: service.title,
+                ),
+              ],
               const SizedBox(height: 24),
-              const Text('FAQ', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              Text(s.faqTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
               const SizedBox(height: 8),
-              const ListTile(
-                title: Text('How many revisions?'),
-                subtitle: Text('Up to 3 revisions included.'),
+              ListTile(
+                title: Text(s.faqRevisionsQ),
+                subtitle: Text(s.faqRevisionsA),
                 contentPadding: EdgeInsets.zero,
               ),
+              const SizedBox(height: 80),
             ],
           ),
           bottomNavigationBar: SafeArea(
@@ -105,73 +120,57 @@ class ServiceDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (service.providerId != null) ...[
+                  if (service.providerId != null && !isOwner) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          ref.read(providerProfileProvider(service.providerId!).future).then((user) {
+                            if (user != null && context.mounted) {
+                              showContactProviderSheet(context: context, ref: ref, provider: user);
+                            }
+                          });
+                        },
+                        icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                        label: Text(s.contactProvider),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (!isOwner)
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: SmoothButton(
+                            label: s.requestQuote,
+                            variant: SmoothButtonVariant.outline,
                             onPressed: () {
-                              ref.read(providerProfileProvider(service.providerId!).future).then((user) {
-                                if (user != null && context.mounted) {
-                                  showContactProviderSheet(context: context, ref: ref, provider: user);
-                                }
-                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(s.quoteSentDemo)),
+                              );
                             },
-                            icon: const Icon(Icons.mail_outline_rounded, size: 18),
-                            label: Text(s.contactProvider),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => showLeaveReviewSheet(
-                              context: context,
-                              ref: ref,
-                              providerId: service.providerId!,
-                              providerName: service.providerName ?? 'Provider',
-                              contextLabel: service.title,
-                            ),
-                            icon: const Icon(Icons.rate_review_outlined, size: 18),
-                            label: Text(s.leaveReview),
+                          child: SmoothButton(
+                            label: s.bookNow,
+                            onPressed: () {
+                              context.push(
+                                '/checkout',
+                                extra: PaymentCheckoutArgs(
+                                  title: service.title,
+                                  subtitle: service.providerName,
+                                  amountCentimes: service.priceCents,
+                                  purpose: PaymentPurpose.service,
+                                  itemId: serviceId,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SmoothButton(
-                          label: 'Request quote',
-                          variant: SmoothButtonVariant.outline,
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Quote request sent (demo)')),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SmoothButton(
-                          label: s.bookNow,
-                          onPressed: () {
-                            context.push(
-                              '/checkout',
-                              extra: PaymentCheckoutArgs(
-                                title: service.title,
-                                subtitle: service.providerName,
-                                amountCentimes: service.priceCents,
-                                purpose: PaymentPurpose.service,
-                                itemId: serviceId,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),

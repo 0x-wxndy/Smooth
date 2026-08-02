@@ -7,7 +7,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/role_utils.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../../../shared/widgets/async_content.dart';
+import '../../../shared/widgets/profile_cover_header.dart';
 import 'profile_library_section.dart';
 import 'profile_portfolio_section.dart';
 import '../../../shared/widgets/share_sheet.dart';
@@ -35,6 +37,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final statsAsync = ref.watch(gamificationProvider);
+    final plan = ref.watch(subscriptionProvider);
     final s = S.of(context);
     final progress = statsAsync.valueOrNull?.levelProgress ?? 0.75;
     final handle = '@${(user?.displayName ?? 'user').toLowerCase().replaceAll(' ', '_')}';
@@ -51,293 +54,181 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 controller: _scrollController,
                 padding: EdgeInsets.zero,
                 children: [
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentOrange.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.local_fire_department, size: 14, color: AppColors.accentOrange),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${stats.currentStreak}',
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.ios_share_rounded, size: 22),
-                      onPressed: () => showShareSheet(context),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.settings_outlined, size: 22),
-                      onPressed: _openSettings,
-                    ),
-                  ],
-                ),
-              ),
+            ProfileCoverHeader(
+              coverUrl: user != null ? profileCoverForUser(user) : AppAssets.profileCoverLearner,
+              displayName: user?.displayName ?? 'User',
+              roleLabel: user != null ? roleDisplayName(user.role) : '',
+              handle: handle,
+              bio: user?.bio ?? s.defaultBio,
+              avatarUrl: user != null ? avatarForUser(user) : AppAssets.avatar1,
+              progress: progress,
+              streak: stats.currentStreak,
+              onShare: () => showShareSheet(context),
+              onSettings: _openSettings,
             ),
 
-            // ── Header: avatar + identity ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 84,
-                    height: 84,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 84,
-                          height: 84,
-                          child: CircularProgressIndicator(
-                            value: progress.clamp(0.05, 1.0),
-                            strokeWidth: 4,
-                            backgroundColor: AppColors.surfaceVariant,
-                            color: AppColors.accentPurple,
-                          ),
-                        ),
-                        CircleAvatar(
-                          radius: 34,
-                          backgroundColor: AppColors.pastelLavender,
-                          backgroundImage: const NetworkImage(AppAssets.avatar1),
-                          onBackgroundImageError: (_, __) {},
-                          child: Text(
-                            (user?.displayName ?? 'U')[0].toUpperCase(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 24,
-                              color: AppColors.accentPurple,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentPurple,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${(progress * 100).round()}%',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user?.displayName ?? 'User',
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        if (user != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              roleDisplayName(user.role),
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        const SizedBox(height: 4),
-                        Text(handle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                        const SizedBox(height: 4),
-                        Text(
-                          s.defaultBio,
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilledButton.tonal(
-                            onPressed: () {},
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(s.editProfile, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Insight banner ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
+            if (plan.hasPriorityReview || plan.hasMentoring) ...[
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 56,
-                          height: 36,
-                          child: Stack(
-                            children: [
-                              for (var i = 0; i < 3; i++)
-                                Positioned(
-                                  left: i * 14.0,
-                                  child: CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor: AppColors.surface,
-                                    backgroundImage: NetworkImage(
-                                      [AppAssets.avatar2, AppAssets.avatar3, AppAssets.avatar4][i],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              style: const TextStyle(fontSize: 12, height: 1.35, color: AppColors.textPrimary),
-                              children: _insightSpans(s.insightBanner.replaceAll('{n}', '61')),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (user?.role != UserRole.learner) ...[
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton(
-                          onPressed: () => context.push('/profile/feedback'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.accentPink,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            s.viewFeedback,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                          ),
-                        ),
+                    if (plan.hasPriorityReview)
+                      _SubscriptionPerkTile(
+                        icon: Icons.rate_review_outlined,
+                        label: s.priorityReviewActive,
+                        color: AppColors.accentPurple,
+                      ),
+                    if (plan.hasMentoring) ...[
+                      if (plan.hasPriorityReview) const SizedBox(height: 8),
+                      _SubscriptionPerkTile(
+                        icon: Icons.support_agent_rounded,
+                        label: s.vipMentoringTitle,
+                        color: const Color(0xFFD97706),
+                        onTap: () => context.push('/profile/settings'),
                       ),
                     ],
                   ],
                 ),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+
+            ProfileSectionCard(
+              title: s.streak,
+              icon: Icons.insights_outlined,
+              iconColor: AppColors.accentOrange,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 56,
+                        height: 36,
+                        child: Stack(
+                          children: [
+                            for (var i = 0; i < 3; i++)
+                              Positioned(
+                                left: i * 14.0,
+                                child: CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: AppColors.surface,
+                                  backgroundImage: NetworkImage(
+                                    [AppAssets.avatar2, AppAssets.avatar3, AppAssets.avatar4][i],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            style: const TextStyle(fontSize: 12, height: 1.35, color: AppColors.textPrimary),
+                            children: _insightSpans(s.insightBanner.replaceAll('{n}', '61')),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (user?.role != UserRole.learner) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton(
+                        onPressed: () => context.push('/profile/feedback'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.accentPink,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          s.viewFeedback,
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
 
             const SizedBox(height: 12),
 
-            // ── Moments ──
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Material(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-              child: InkWell(
+            ProfileSectionCard(
+              title: s.moments,
+              subtitle: s.publications,
+              icon: Icons.public,
+              iconColor: AppColors.accentPurple,
+              action: user == null
+                  ? null
+                  : Text(
+                      ref.watch(userPublicationsProvider(user.id)).maybeWhen(
+                            data: (pubs) => '${pubs.length}',
+                            orElse: () => '0',
+                          ),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
+              child: Material(
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(14),
-                onTap: user == null ? null : () => _showMomentsSheet(context, ref, user.id),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.public, color: AppColors.accentPurple, size: 22),
-                      const SizedBox(width: 8),
-                      Text(s.moments, style: const TextStyle(fontWeight: FontWeight.w800)),
-                      const Spacer(),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.network(
-                          AppAssets.learningDesk,
-                          width: 36,
-                          height: 28,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 36,
-                            height: 28,
-                            color: AppColors.surfaceVariant,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: user == null ? null : () => context.push('/profile/moments'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            AppAssets.learningDesk,
+                            width: 52,
+                            height: 52,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 52,
+                              height: 52,
+                              color: AppColors.surfaceVariant,
+                              child: const Icon(Icons.photo_library_outlined, color: AppColors.textMuted),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        user == null
-                            ? '0'
-                            : ref.watch(userPublicationsProvider(user.id)).maybeWhen(
-                                  data: (pubs) => '${pubs.length}',
-                                  orElse: () => '0',
-                                ),
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            user == null
+                                ? s.noPublications
+                                : ref.watch(userPublicationsProvider(user.id)).maybeWhen(
+                                      data: (pubs) => pubs.isEmpty ? s.noPublications : pubs.first.body,
+                                      orElse: () => s.noPublications,
+                                    ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
             const SizedBox(height: 18),
 
-            // ── Portfolio: the main showcase for this profile ──
+            // ── Role-specific showcase (portfolio / learning journey / client activity) ──
             if (user != null) ProfilePortfolioSection(role: user.role, userId: user.id),
 
             const SizedBox(height: 18),
 
-            // ── Enrolled / posted courses & services ──
+            // ── Courses, learning or booked services ──
             if (user != null) ProfileLibrarySection(role: user.role),
 
       
@@ -347,56 +238,27 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
             // ── Learn Hub grid ──
             if (user != null && user.role != UserRole.client)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white,
-                        AppColors.pastelLavender.withValues(alpha: 0.55),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              s.learnHubTitle,
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                            ),
-                          ),
-                          const Icon(Icons.laptop_mac_rounded, color: AppColors.accentPurple, size: 36),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      GridView.count(
-                        crossAxisCount: 4,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 0.78,
-                        children: [
-                          _HubCat(icon: Icons.code, label: 'Python &\nFlutter', color: AppColors.primary, onTap: () => context.go('/learn')),
-                          _HubCat(icon: Icons.palette, label: 'Visual\nIdentity', color: AppColors.accentBlue, onTap: () => context.go('/learn')),
-                          _HubCat(icon: Icons.brush, label: 'Illustrator', color: AppColors.error, onTap: () => context.go('/learn')),
-                          _HubCat(icon: Icons.devices, label: 'UI/UX\nHub', color: AppColors.accentPurple, onTap: () => context.go('/learn')),
-                          _HubCat(icon: Icons.smart_toy, label: 'AI Dev &\nDesign', color: AppColors.accent, onTap: () => context.push('/ai')),
-                          _HubCat(icon: Icons.storage, label: 'Backend\nSystems', color: AppColors.accentOrange, onTap: () => context.go('/learn')),
-                          _HubCat(icon: Icons.movie_filter, label: 'Motion\nGraphics', color: AppColors.accentPink, onTap: () => context.go('/learn')),
-                          _HubCat(icon: Icons.menu_book, label: 'Design\nTheory', color: AppColors.navy, onTap: () => context.go('/learn')),
-                        ],
-                      ),
-                    ],
-                  ),
+              ProfileSectionCard(
+                title: s.learnHubTitle,
+                icon: Icons.laptop_mac_rounded,
+                iconColor: AppColors.accentPurple,
+                child: GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 0.78,
+                  children: [
+                    _HubCat(icon: Icons.code, label: 'Python &\nFlutter', color: AppColors.primary, onTap: () => context.go('/learn')),
+                    _HubCat(icon: Icons.palette, label: 'Visual\nIdentity', color: AppColors.accentBlue, onTap: () => context.go('/learn')),
+                    _HubCat(icon: Icons.brush, label: 'Illustrator', color: AppColors.error, onTap: () => context.go('/learn')),
+                    _HubCat(icon: Icons.devices, label: 'UI/UX\nHub', color: AppColors.accentPurple, onTap: () => context.go('/learn')),
+                    _HubCat(icon: Icons.smart_toy, label: 'AI Dev &\nDesign', color: AppColors.accent, onTap: () => context.push('/ai')),
+                    _HubCat(icon: Icons.storage, label: 'Backend\nSystems', color: AppColors.accentOrange, onTap: () => context.go('/learn')),
+                    _HubCat(icon: Icons.movie_filter, label: 'Motion\nGraphics', color: AppColors.accentPink, onTap: () => context.go('/learn')),
+                    _HubCat(icon: Icons.menu_book, label: 'Design\nTheory', color: AppColors.navy, onTap: () => context.go('/learn')),
+                  ],
                 ),
               ),
 
@@ -473,103 +335,44 @@ class _HubCat extends StatelessWidget {
   }
 }
 
-Future<void> _showMomentsSheet(BuildContext context, WidgetRef ref, String userId) async {
-  final s = S.of(context);
-  await showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (ctx) {
-      return DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.92,
-        builder: (_, controller) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
+class _SubscriptionPerkTile extends StatelessWidget {
+  const _SubscriptionPerkTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: color),
                 ),
-                const SizedBox(height: 14),
-                Text(s.moments, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                const SizedBox(height: 14),
-                Expanded(
-                  child: Consumer(
-                    builder: (context, ref, _) {
-                      final pubsAsync = ref.watch(userPublicationsProvider(userId));
-                      return pubsAsync.when(
-                        loading: () => const Center(child: CircularProgressIndicator()),
-                        error: (e, _) => Center(child: Text('Error: $e')),
-                        data: (pubs) {
-                          if (pubs.isEmpty) {
-                            return Center(
-                              child: Text(s.noPublications, style: const TextStyle(color: AppColors.textSecondary)),
-                            );
-                          }
-                          return ListView.separated(
-                            controller: controller,
-                            itemCount: pubs.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
-                            itemBuilder: (_, i) {
-                              final p = pubs[i];
-                              return Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceVariant,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(p.body, style: const TextStyle(fontSize: 13, height: 1.35)),
-                                    if (p.hashtags.isNotEmpty) ...[
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 4,
-                                        children: p.hashtags
-                                            .map(
-                                              (h) => Text(
-                                                h.startsWith('#') ? h : '#$h',
-                                                style: const TextStyle(
-                                                  color: AppColors.primary,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
+              ),
+              if (onTap != null) Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.7)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

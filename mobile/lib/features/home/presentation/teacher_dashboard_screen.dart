@@ -5,12 +5,15 @@ import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/models/course_model.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/cards.dart';
 import '../../../shared/widgets/hub_hero.dart';
 import '../../../shared/widgets/back_to_menu_bar.dart';
+import '../../../shared/widgets/dashboard_section.dart';
 import '../../../shared/widgets/smooth_components.dart';
+import '../../teacher/presentation/teacher_course_detail_screen.dart';
 
 class TeacherDashboardTab extends ConsumerWidget {
   const TeacherDashboardTab({super.key});
@@ -23,6 +26,7 @@ class TeacherDashboardTab extends ConsumerWidget {
     final myCoursesAsync = ref.watch(myCoursesProvider);
     final myServicesAsync = ref.watch(myServicesProvider);
     final jobsAsync = ref.watch(jobsProvider(null));
+    final enrollmentAsync = ref.watch(teacherEnrollmentStatsProvider);
 
     final courseCount = myCoursesAsync.maybeWhen(data: (c) => '${c.length}', orElse: () => '—');
     final serviceCount = myServicesAsync.maybeWhen(data: (c) => '${c.length}', orElse: () => '—');
@@ -39,7 +43,7 @@ class TeacherDashboardTab extends ConsumerWidget {
               heroTitle: s.teacherHeroTitle,
               heroSubtitle: s.teacherHeroSubtitle,
               coverUrl: AppAssets.learningDesk,
-              coverHeight: 330,
+              coverHeight: 272,
               trailing: statsAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
@@ -70,44 +74,79 @@ class TeacherDashboardTab extends ConsumerWidget {
                     statsAsync.when(
                       loading: () => const SizedBox.shrink(),
                       error: (_, __) => const SizedBox.shrink(),
-                      data: (stats) => Row(
-                        children: [
-                          Expanded(
-                            child: SoftMetricCard(
-                              background: AppColors.pastelPeach,
-                              icon: Icons.monetization_on_rounded,
-                              iconColor: AppColors.coin,
-                              label: s.coins,
-                              value: '${stats.coins}',
+                      data: (stats) => DashboardSectionCard(
+                        title: s.creatorStudio,
+                        icon: Icons.dashboard_customize_outlined,
+                        iconColor: AppColors.accentPurple,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SoftMetricCard(
+                                background: AppColors.pastelPeach,
+                                icon: Icons.monetization_on_rounded,
+                                iconColor: AppColors.coin,
+                                label: s.coins,
+                                value: '${stats.coins}',
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: SoftMetricCard(
-                              background: AppColors.pastelLavender,
-                              icon: Icons.menu_book_rounded,
-                              iconColor: AppColors.accentPurple,
-                              label: s.courses,
-                              value: courseCount,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: SoftMetricCard(
+                                background: AppColors.pastelLavender,
+                                icon: Icons.menu_book_rounded,
+                                iconColor: AppColors.accentPurple,
+                                label: s.courses,
+                                value: courseCount,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: SoftMetricCard(
-                              background: AppColors.pastelMint,
-                              icon: Icons.design_services_rounded,
-                              iconColor: AppColors.accentGreen,
-                              label: s.services,
-                              value: serviceCount,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: SoftMetricCard(
+                                background: AppColors.pastelMint,
+                                icon: Icons.design_services_rounded,
+                                iconColor: AppColors.accentGreen,
+                                label: s.services,
+                                value: serviceCount,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    SectionHeader(title: s.creatorActions),
-                    BorderedSection(
-                      borderColor: AppColors.accentPurple,
+                    const SizedBox(height: 16),
+                    AsyncValueContent(
+                      value: enrollmentAsync,
+                      builder: (enrollment) => DashboardSectionCard(
+                        title: s.myStudents,
+                        subtitle: enrollment.totalStudents == 0
+                            ? s.noEnrolledStudentsYet
+                            : s.totalEnrolled(enrollment.totalStudents),
+                        icon: Icons.people_outline,
+                        iconColor: AppColors.accentBlue,
+                        action: enrollment.students.isEmpty
+                            ? null
+                            : TextButton(
+                                onPressed: () => context.go('/teacher/courses?tab=students'),
+                                child: Text(s.seeAll, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                              ),
+                        child: enrollment.students.isEmpty
+                            ? Text(
+                                s.noEnrolledStudentsYet,
+                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              )
+                            : Column(
+                                children: enrollment.students
+                                    .take(5)
+                                    .map((st) => EnrolledStudentRow(student: st))
+                                    .toList(),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DashboardSectionCard(
+                      title: s.creatorActions,
+                      icon: Icons.add_circle_outline,
+                      iconColor: AppColors.accentPurple,
                       child: Column(
                         children: [
                           _ActionRow(
@@ -136,44 +175,57 @@ class TeacherDashboardTab extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    SectionHeader(
+                    const SizedBox(height: 16),
+                    DashboardSectionCard(
                       title: s.jobOffers,
-                      actionLabel: s.seeAll,
-                      onAction: () => context.go('/jobs'),
-                    ),
-                    AsyncValueContent(
-                      value: jobsAsync,
-                      builder: (jobs) => Column(
-                        children: jobs
-                            .take(3)
-                            .map((j) => JobCard(job: j, onTap: () => context.go('/jobs')))
-                            .toList(),
+                      icon: Icons.work_outline_rounded,
+                      iconColor: AppColors.accentBlue,
+                      action: TextButton(
+                        onPressed: () => context.go('/jobs'),
+                        child: Text(s.seeAll, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                      ),
+                      child: AsyncValueContent(
+                        value: jobsAsync,
+                        builder: (jobs) => Column(
+                          children: jobs
+                              .take(3)
+                              .map((j) => JobCard(job: j, onTap: () => context.go('/jobs')))
+                              .toList(),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SectionHeader(
+                    const SizedBox(height: 16),
+                    DashboardSectionCard(
                       title: s.myCourses,
-                      actionLabel: s.seeAll,
-                      onAction: () => context.go('/teacher/courses'),
-                    ),
-                    AsyncValueContent(
-                      value: myCoursesAsync,
-                      builder: (courses) {
-                        if (courses.isEmpty) {
-                          return Text(s.noCoursesYet, style: const TextStyle(color: AppColors.textSecondary));
-                        }
-                        return Column(
-                          children: courses
-                              .take(2)
-                              .map(
-                                (c) => CourseCard(
-                                  course: c,
-                                  onTap: () => context.push('/courses/${c.id}'),
-                                ),
-                              )
-                              .toList(),
-                        );
-                      },
+                      icon: Icons.menu_book_outlined,
+                      iconColor: AppColors.primary,
+                      action: TextButton(
+                        onPressed: () => context.go('/teacher/courses'),
+                        child: Text(s.seeAll, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                      ),
+                      child: AsyncValueContent(
+                        value: myCoursesAsync,
+                        builder: (courses) {
+                          if (courses.isEmpty) {
+                            return Text(s.noCoursesYet, style: const TextStyle(color: AppColors.textSecondary));
+                          }
+                          return Column(
+                            children: courses
+                                .take(2)
+                                .map(
+                                  (c) => _TeacherCourseRow(
+                                    course: c,
+                                    studentCount: enrollmentAsync.maybeWhen(
+                                      data: (e) => e.students.where((st) => st.courseId == c.id).length,
+                                      orElse: () => 0,
+                                    ),
+                                    onTap: () => context.push('/teacher/courses/${c.id}'),
+                                  ),
+                                )
+                                .toList(),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -181,6 +233,48 @@ class TeacherDashboardTab extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TeacherCourseRow extends StatelessWidget {
+  const _TeacherCourseRow({
+    required this.course,
+    required this.studentCount,
+    required this.onTap,
+  });
+
+  final Course course;
+  final int studentCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(course.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Text(
+                    s.studentsEnrolled(studentCount),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }

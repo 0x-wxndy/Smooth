@@ -9,6 +9,7 @@ import '../../../shared/providers/database_provider.dart';
 import '../../../shared/widgets/smooth_button.dart';
 import '../../../shared/widgets/smooth_components.dart';
 import '../payment_models.dart';
+import 'payment_fulfillment.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key, required this.args});
@@ -207,15 +208,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return;
     }
 
-    if (widget.args.purpose == PaymentPurpose.aiTokens && widget.args.aiTokens != null) {
-      await ref.read(databaseProvider).creditAiTokens(userId, widget.args.aiTokens!);
-      ref.invalidate(aiQuotaProvider);
-    } else if (widget.args.purpose == PaymentPurpose.course && widget.args.itemId != null) {
-      await ref.read(databaseProvider).enrollCourse(userId, widget.args.itemId!);
-      ref.invalidate(coursesProvider);
-      ref.invalidate(courseProvider(widget.args.itemId!));
-    }
-
+    await PaymentFulfillment.apply(context, widget.args, PaymentGateway.coins);
     ref.invalidate(gamificationProvider);
 
     if (!context.mounted) return;

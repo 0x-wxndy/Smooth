@@ -2,7 +2,10 @@ class AppConfig {
   static const appName = 'Samooth';
   static const aiDailyLimit = 5;
   static const dbName = 'smooth.db';
-  static const dbVersion = 10;
+  static const dbVersion = 11;
+
+  /// Platform commission on escrow release (1000 = 10%).
+  static const escrowPlatformFeeBps = 1000;
 
   /// Institution contact (shown to users / handled by admin).
   static const hubPhone = '+213 555 12 34 56';

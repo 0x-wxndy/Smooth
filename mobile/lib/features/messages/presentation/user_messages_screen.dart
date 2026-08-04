@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/models/dm_model.dart';
 import '../../../shared/models/hub_admin_model.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/app_providers.dart';
@@ -130,6 +132,7 @@ class _UserMessagesScreenState extends ConsumerState<UserMessagesScreen> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final msgsAsync = ref.watch(userMessagesProvider);
+    final convsAsync = ref.watch(conversationsProvider);
 
     if (_selected != null) {
       return _MessageThreadView(
@@ -139,7 +142,6 @@ class _UserMessagesScreenState extends ConsumerState<UserMessagesScreen> {
     }
 
     return Scaffold(
-     
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _compose,
         backgroundColor: AppColors.primary,
@@ -147,42 +149,142 @@ class _UserMessagesScreenState extends ConsumerState<UserMessagesScreen> {
         label: Text(s.composeMessage),
       ),
       body: AsyncValueContent(
-        value: msgsAsync,
-        builder: (msgs) {
-          if (msgs.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.forum_outlined, size: 56, color: AppColors.textSecondary.withValues(alpha: 0.5)),
-                    const SizedBox(height: 12),
-                    Text(s.noMessages, style: const TextStyle(color: AppColors.textSecondary)),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _compose,
-                      icon: const Icon(Icons.mail_outline),
-                      label: Text(s.contactHub),
+        value: convsAsync,
+        builder: (conversations) {
+          return AsyncValueContent(
+            value: msgsAsync,
+            builder: (hubMsgs) {
+              if (conversations.isEmpty && hubMsgs.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.forum_outlined, size: 56, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                        const SizedBox(height: 12),
+                        Text(s.noMessages, style: const TextStyle(color: AppColors.textSecondary)),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _compose,
+                          icon: const Icon(Icons.mail_outline),
+                          label: Text(s.contactHub),
+                        ),
+                      ],
                     ),
+                  ),
+                );
+              }
+
+              return ListView(
+                children: [
+                  if (conversations.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        s.directMessages,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textSecondary),
+                      ),
+                    ),
+                    ...conversations.map(
+                      (conv) => _DmInboxTile(
+                        conversation: conv,
+                        onTap: () => context.push('/messages/dm/${conv.id}'),
+                        timeLabel: _formatTime(context, conv.lastMessageAt ?? conv.updatedAt),
+                      ),
+                    ),
+                    if (hubMsgs.isNotEmpty) ...[
+                      const Divider(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Text(
+                          s.hubSupport,
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
                   ],
-                ),
-              ),
-            );
-          }
-          return ListView.separated(
-            itemCount: msgs.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
-            itemBuilder: (_, i) {
-              final msg = msgs[i];
-              return _MessageInboxTile(
-                message: msg,
-                onTap: () => setState(() => _selected = msg),
-                timeLabel: _formatTime(context, msg.createdAt),
+                  ...hubMsgs.map(
+                    (msg) => Column(
+                      children: [
+                        _MessageInboxTile(
+                          message: msg,
+                          onTap: () => setState(() => _selected = msg),
+                          timeLabel: _formatTime(context, msg.createdAt),
+                        ),
+                        const Divider(height: 1, indent: 76),
+                      ],
+                    ),
+                  ),
+                ],
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _DmInboxTile extends ConsumerWidget {
+  const _DmInboxTile({
+    required this.conversation,
+    required this.onTap,
+    required this.timeLabel,
+  });
+
+  final DmConversation conversation;
+  final VoidCallback onTap;
+  final String timeLabel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final me = ref.watch(authProvider).user;
+    final peerName = me == null ? 'User' : conversation.peerNameFor(me.id);
+    final preview = conversation.lastMessagePreview ?? '';
+
+    return Material(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                child: const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            peerName,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                          ),
+                        ),
+                        Text(timeLabel, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      preview,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

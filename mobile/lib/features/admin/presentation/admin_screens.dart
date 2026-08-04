@@ -126,6 +126,40 @@ class AdminDashboardTab extends ConsumerWidget {
                           Expanded(child: _Stat(s.courses, '${stats.courses}', Icons.library_books, AppColors.accentPurple, () => context.push('/admin/market'))),
                         ],
                       ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _Stat(
+                              s.escrowDeals,
+                              '${stats.escrowActive}',
+                              Icons.handshake_outlined,
+                              AppColors.accentGreen,
+                              () => context.push('/admin/logs'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _Stat(
+                              s.escrowCompletedDeals,
+                              '${stats.escrowCompleted}',
+                              Icons.verified_outlined,
+                              AppColors.primary,
+                              () => context.push('/admin/logs'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _Stat(
+                              s.platformRevenue,
+                              stats.platformFeesLabel,
+                              Icons.account_balance_outlined,
+                              AppColors.accentOrange,
+                              () => context.push('/admin/logs'),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 22),
                       Text(s.adminQuickActions, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                       const SizedBox(height: 10),
@@ -818,21 +852,56 @@ class _AdminLogsScreenState extends ConsumerState<AdminLogsScreen> with SingleTi
                   value: paymentsAsync,
                   builder: (logs) {
                     if (logs.isEmpty) return Center(child: Text(s.noPaymentLogs));
-                    return ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: logs.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, i) {
-                        final log = logs[i];
-                        return _AdminRecordCard(
-                          title: log.title,
-                          subtitle: '${log.userName ?? s.anonymousUser} · ${log.purpose} · ${log.gateway}',
-                          trailing: log.amountLabel,
-                          icon: log.isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-                          iconColor: log.isSuccess ? AppColors.success : AppColors.error,
-                          footer: log.reference ?? _formatLogTime(context, log.createdAt),
-                        );
-                      },
+                    final escrowFunded = logs.where((l) => l.purpose == 'escrow' && l.isSuccess).length;
+                    final escrowFees = logs
+                        .where((l) => l.purpose == 'escrowRelease' && l.isSuccess)
+                        .fold<int>(0, (sum, l) => sum + l.amountCents);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (escrowFunded > 0 || escrowFees > 0)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppColors.pastelMint,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(s.escrowTracking, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    s.escrowTrackingSummary(escrowFunded, Money.format(escrowFees)),
+                                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.35),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        Expanded(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: logs.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (_, i) {
+                              final log = logs[i];
+                              return _AdminRecordCard(
+                                title: log.title,
+                                subtitle:
+                                    '${log.userName ?? s.anonymousUser} · ${_paymentPurposeLabel(s, log.purpose)} · ${log.gateway}',
+                                trailing: log.amountLabel,
+                                icon: log.isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                                iconColor: log.isSuccess ? AppColors.success : AppColors.error,
+                                footer: log.reference ?? _formatLogTime(context, log.createdAt),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -980,6 +1049,12 @@ String _formatLogTime(BuildContext context, String iso) {
     return iso;
   }
 }
+
+String _paymentPurposeLabel(S s, String purpose) => switch (purpose) {
+      'escrow' => s.paymentPurposeEscrow,
+      'escrowRelease' => s.paymentPurposeEscrowRelease,
+      _ => purpose,
+    };
 
 // ── Messages ────────────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/models/subscription_plan.dart';
 
 /// What the mock payment unlocks after success.
-enum PaymentPurpose { course, service, aiTokens, subscription, hubRoom, hubPrint }
+enum PaymentPurpose { course, service, aiTokens, subscription, hubRoom, hubPrint, escrow }
 
 enum PaymentGateway {
   edahabia,

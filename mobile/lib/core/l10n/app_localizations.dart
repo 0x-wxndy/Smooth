@@ -470,6 +470,14 @@ class S {
   String get messages => t('messages');
   String get rooms => t('rooms');
   String get printOrders => t('printOrders');
+  String get escrowDeals => t('escrowDeals');
+  String get escrowCompletedDeals => t('escrowCompletedDeals');
+  String get platformRevenue => t('platformRevenue');
+  String get escrowTracking => t('escrowTracking');
+  String escrowTrackingSummary(int fundedCount, String feesTotal) =>
+      t('escrowTrackingSummary').replaceAll('{count}', '$fundedCount').replaceAll('{fees}', feesTotal);
+  String get paymentPurposeEscrow => t('paymentPurposeEscrow');
+  String get paymentPurposeEscrowRelease => t('paymentPurposeEscrowRelease');
   String get manageUsers => t('manageUsers');
   String get manageUsersSub => t('manageUsersSub');
   String get manageReports => t('manageReports');
@@ -523,6 +531,30 @@ class S {
   String get message => t('message');
   String get sendMessage => t('sendMessage');
   String get messageSent => t('messageSent');
+  String get directMessages => t('directMessages');
+  String get directMessage => t('directMessage');
+  String get hubSupport => t('hubSupport');
+  String get startConversation => t('startConversation');
+  String get sendOffer => t('sendOffer');
+  String get offerTitle => t('offerTitle');
+  String get offerDescription => t('offerDescription');
+  String get offerAmount => t('offerAmount');
+  String get payEscrow => t('payEscrow');
+  String get markDelivered => t('markDelivered');
+  String get approveRelease => t('approveRelease');
+  String approveReleaseConfirm(String amount) => t('approveReleaseConfirm').replaceAll('{amount}', amount);
+  String get escrowReleased => t('escrowReleased');
+  String get escrowOffer => t('escrowOffer');
+  String get escrowPending => t('escrowPending');
+  String get escrowFunded => t('escrowFunded');
+  String get escrowDelivered => t('escrowDelivered');
+  String get escrowCompleted => t('escrowCompleted');
+  String get escrowCancelled => t('escrowCancelled');
+  String get escrowPaySubtitle => t('escrowPaySubtitle');
+  String escrowFeeNote(String fee) => t('escrowFeeNote').replaceAll('{fee}', fee);
+  String escrowPayoutSummary(String payout, String fee) =>
+      t('escrowPayoutSummary').replaceAll('{payout}', payout).replaceAll('{fee}', fee);
+  String get backToConversation => t('backToConversation');
   String get myMessages => t('myMessages');
   String get myMessagesSub => t('myMessagesSub');
   String get composeMessage => t('composeMessage');
@@ -1999,6 +2031,17 @@ class S {
     'messages': {'en': 'Messages', 'fr': 'Messages', 'ar': 'الرسائل'},
     'rooms': {'en': 'Room bookings', 'fr': 'Résa. salles', 'ar': 'حجز القاعات'},
     'printOrders': {'en': 'Print orders', 'fr': 'Commandes print', 'ar': 'طلبات الطباعة'},
+    'escrowDeals': {'en': 'Active escrow', 'fr': 'Séquestres actifs', 'ar': 'ضمان نشط'},
+    'escrowCompletedDeals': {'en': 'Escrow done', 'fr': 'Séquestres terminés', 'ar': 'ضمان مكتمل'},
+    'platformRevenue': {'en': 'Platform fees', 'fr': 'Frais plateforme', 'ar': 'رسوم المنصة'},
+    'escrowTracking': {'en': 'Escrow & platform revenue', 'fr': 'Séquestre et revenus plateforme', 'ar': 'الضمان وإيرادات المنصة'},
+    'escrowTrackingSummary': {
+      'en': '{count} escrow payment(s) logged · {fees} total platform fees collected',
+      'fr': '{count} paiement(s) séquestre · {fees} de frais plateforme collectés',
+      'ar': '{count} دفعة ضمان · {fees} إجمالي رسوم المنصة',
+    },
+    'paymentPurposeEscrow': {'en': 'Escrow fund', 'fr': 'Séquestre', 'ar': 'تمويل الضمان'},
+    'paymentPurposeEscrowRelease': {'en': 'Platform fee', 'fr': 'Frais plateforme', 'ar': 'رسوم المنصة'},
     'manageUsers': {
       'en': 'Users management',
       'fr': 'Gestion utilisateurs',
@@ -2272,6 +2315,121 @@ class S {
       'en': 'Message sent to the hub',
       'fr': 'Message envoyé au hub',
       'ar': 'تم إرسال الرسالة إلى الهب',
+    },
+    'directMessages': {
+      'en': 'Direct messages',
+      'fr': 'Messages directs',
+      'ar': 'رسائل مباشرة',
+    },
+    'directMessage': {
+      'en': 'Direct message',
+      'fr': 'Message direct',
+      'ar': 'رسالة مباشرة',
+    },
+    'hubSupport': {
+      'en': 'Hub support',
+      'fr': 'Support hub',
+      'ar': 'دعم الهب',
+    },
+    'startConversation': {
+      'en': 'Say hello to start the conversation.',
+      'fr': 'Dites bonjour pour commencer.',
+      'ar': 'قل مرحباً لبدء المحادثة.',
+    },
+    'sendOffer': {
+      'en': 'Send offer',
+      'fr': 'Envoyer une offre',
+      'ar': 'إرسال عرض',
+    },
+    'offerTitle': {
+      'en': 'Offer title',
+      'fr': 'Titre de l’offre',
+      'ar': 'عنوان العرض',
+    },
+    'offerDescription': {
+      'en': 'Scope & deliverables',
+      'fr': 'Périmètre et livrables',
+      'ar': 'نطاق العمل والتسليم',
+    },
+    'offerAmount': {
+      'en': 'Price (DZD)',
+      'fr': 'Prix (DZD)',
+      'ar': 'السعر (د.ج)',
+    },
+    'payEscrow': {
+      'en': 'Pay into escrow',
+      'fr': 'Payer en séquestre',
+      'ar': 'الدفع في الضمان',
+    },
+    'markDelivered': {
+      'en': 'Mark as delivered',
+      'fr': 'Marquer livré',
+      'ar': 'تحديد كمُسلّم',
+    },
+    'approveRelease': {
+      'en': 'Approve & release',
+      'fr': 'Approuver et libérer',
+      'ar': 'الموافقة والتحرير',
+    },
+    'approveReleaseConfirm': {
+      'en': 'Release {amount} from escrow to the freelancer? 10% platform fee applies.',
+      'fr': 'Libérer {amount} du séquestre au freelance ? Frais plateforme 10 %.',
+      'ar': 'تحرير {amount} من الضمان للمستقل؟ رسوم المنصة 10٪.',
+    },
+    'escrowReleased': {
+      'en': 'Payment released to freelancer',
+      'fr': 'Paiement libéré au freelance',
+      'ar': 'تم تحرير الدفع للمستقل',
+    },
+    'escrowOffer': {
+      'en': 'Escrow offer',
+      'fr': 'Offre séquestre',
+      'ar': 'عرض ضمان',
+    },
+    'escrowPending': {
+      'en': 'Awaiting payment',
+      'fr': 'En attente de paiement',
+      'ar': 'في انتظار الدفع',
+    },
+    'escrowFunded': {
+      'en': 'Funded',
+      'fr': 'Financé',
+      'ar': 'ممول',
+    },
+    'escrowDelivered': {
+      'en': 'Delivered',
+      'fr': 'Livré',
+      'ar': 'مُسلّم',
+    },
+    'escrowCompleted': {
+      'en': 'Completed',
+      'fr': 'Terminé',
+      'ar': 'مكتمل',
+    },
+    'escrowCancelled': {
+      'en': 'Cancelled',
+      'fr': 'Annulé',
+      'ar': 'ملغى',
+    },
+    'escrowPaySubtitle': {
+      'en': 'Funds held until you approve delivery',
+      'fr': 'Fonds bloqués jusqu’à votre approbation',
+      'ar': 'الأموال محجوزة حتى موافقتك على التسليم',
+    },
+    'escrowFeeNote': {
+      'en': '10% platform fee ({fee}) on release',
+      'fr': 'Frais plateforme 10 % ({fee}) à la libération',
+      'ar': 'رسوم المنصة 10٪ ({fee}) عند التحرير',
+    },
+    'escrowPayoutSummary': {
+      'en': 'Released: {payout} to freelancer · {fee} platform fee',
+      'fr': 'Libéré : {payout} au freelance · {fee} frais plateforme',
+      'ar': 'تم التحرير: {payout} للمستقل · {fee} رسوم المنصة',
+    },
+    'backToConversation': {
+      'en': 'Back to conversation',
+      'fr': 'Retour à la conversation',
+      'ar': 'العودة إلى المحادثة',
     },
     'replyViaEmail': {
       'en': 'Reply from hub email',

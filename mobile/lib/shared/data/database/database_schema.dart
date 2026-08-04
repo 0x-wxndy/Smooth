@@ -303,6 +303,56 @@ abstract final class DatabaseSchema {
     )
   ''';
 
+  static const dmConversations = '''
+    CREATE TABLE dm_conversations (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      provider_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (client_id) REFERENCES users(id),
+      FOREIGN KEY (provider_id) REFERENCES users(id),
+      UNIQUE(client_id, provider_id)
+    )
+  ''';
+
+  static const dmMessages = '''
+    CREATE TABLE dm_messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      sender_id TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'text',
+      body TEXT NOT NULL,
+      deal_id TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (conversation_id) REFERENCES dm_conversations(id),
+      FOREIGN KEY (sender_id) REFERENCES users(id)
+    )
+  ''';
+
+  static const escrowDeals = '''
+    CREATE TABLE escrow_deals (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      provider_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      platform_fee_bps INTEGER NOT NULL DEFAULT 1000,
+      status TEXT NOT NULL DEFAULT 'pending_payment',
+      provider_payout_cents INTEGER,
+      platform_fee_cents INTEGER,
+      created_at TEXT NOT NULL,
+      funded_at TEXT,
+      delivered_at TEXT,
+      completed_at TEXT,
+      FOREIGN KEY (conversation_id) REFERENCES dm_conversations(id),
+      FOREIGN KEY (client_id) REFERENCES users(id),
+      FOREIGN KEY (provider_id) REFERENCES users(id)
+    )
+  ''';
+
   static List<String> get all => [
         users,
         wallets,
@@ -326,6 +376,9 @@ abstract final class DatabaseSchema {
         publications,
         paymentLogs,
         adminActivityLogs,
+        dmConversations,
+        dmMessages,
+        escrowDeals,
         meta,
       ];
 }

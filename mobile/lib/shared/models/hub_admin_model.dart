@@ -184,6 +184,9 @@ class AdminStats {
     this.openReports = 0,
     this.newMessages = 0,
     this.jobs = 0,
+    this.escrowActive = 0,
+    this.escrowCompleted = 0,
+    this.platformFeesCents = 0,
   });
 
   final int learners;
@@ -197,8 +200,13 @@ class AdminStats {
   final int openReports;
   final int newMessages;
   final int jobs;
+  final int escrowActive;
+  final int escrowCompleted;
+  final int platformFeesCents;
 
   int get totalUsers => learners + teachers + clients;
+
+  String get platformFeesLabel => Money.format(platformFeesCents);
 }
 
 class PaymentLogRecord {

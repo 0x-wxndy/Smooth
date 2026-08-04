@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/user_model.dart';
@@ -68,19 +69,17 @@ Future<void> showContactProviderSheet({
                       ? null
                       : () async {
                           setState(() => sending = true);
-                          await ref.read(databaseProvider).createContactMessage(
-                                userId: me?.id,
-                                name: me?.displayName ?? 'User',
-                                email: me?.email ?? 'user@smooth.app',
-                                subject: subjectCtrl.text.trim(),
+                          final conv = await ref.read(databaseProvider).openConversation(me!.id, provider.id);
+                          await ref.read(databaseProvider).sendDmText(
+                                conversationId: conv.id,
+                                senderId: me.id,
                                 body: bodyCtrl.text.trim(),
                               );
-                          ref.invalidate(userMessagesProvider);
+                          ref.invalidate(conversationsProvider);
+                          ref.invalidate(dmMessagesProvider(conv.id));
                           if (ctx.mounted) Navigator.pop(ctx);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(s.messageSent)),
-                            );
+                            context.push('/messages/dm/${conv.id}');
                           }
                         },
                   style: FilledButton.styleFrom(

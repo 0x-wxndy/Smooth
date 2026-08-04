@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/money.dart';
+import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/smooth_button.dart';
 import '../payment_models.dart';
 
-class PaymentResultScreen extends StatelessWidget {
+class PaymentResultScreen extends ConsumerWidget {
   const PaymentResultScreen({super.key, required this.args});
 
   final PaymentResultArgs args;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = S.of(context);
     final ok = args.success;
 
@@ -135,6 +137,28 @@ class PaymentResultScreen extends StatelessWidget {
                     s.bookInHub,
                     style: TextStyle(color: ok ? Colors.white70 : AppColors.primary),
                   ),
+                ),
+              ],
+              if (ok && args.purpose == PaymentPurpose.escrow && args.itemId != null) ...[
+                const SizedBox(height: 10),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final dealAsync = ref.watch(escrowDealProvider(args.itemId!));
+                    return dealAsync.when(
+                      data: (deal) {
+                        if (deal == null) return const SizedBox.shrink();
+                        return TextButton(
+                          onPressed: () => context.go('/messages/dm/${deal.conversationId}'),
+                          child: Text(
+                            s.backToConversation,
+                            style: TextStyle(color: ok ? Colors.white70 : AppColors.primary),
+                          ),
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    );
+                  },
                 ),
               ],
             ],

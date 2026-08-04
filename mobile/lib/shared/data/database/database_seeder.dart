@@ -129,6 +129,32 @@ abstract final class DatabaseSeeder {
         'item_id': 'course_4',
         'created_at': '2026-07-22T08:12:00Z',
       },
+      {
+        'id': 'pay_seed_8',
+        'user_id': 'user_client',
+        'user_name': 'Client Demo',
+        'purpose': 'escrow',
+        'title': 'Mobile App UI Design — escrow',
+        'amount_cents': 48000000,
+        'gateway': 'edahabia',
+        'status': 'success',
+        'reference': 'EDH-882341',
+        'item_id': 'esc_seed_done',
+        'created_at': '2026-07-20T14:00:00Z',
+      },
+      {
+        'id': 'pay_seed_9',
+        'user_id': 'user_client',
+        'user_name': 'Client Demo',
+        'purpose': 'escrowRelease',
+        'title': 'Mobile App UI Design — platform fee',
+        'amount_cents': 4800000,
+        'gateway': 'escrow',
+        'status': 'success',
+        'reference': 'esc_seed_done',
+        'item_id': 'esc_seed_done',
+        'created_at': '2026-07-21T16:30:00Z',
+      },
     ];
     for (final p in payments) {
       await txn.insert('payment_logs', p);
@@ -194,6 +220,16 @@ abstract final class DatabaseSeeder {
         'target_id': 'user_spam',
         'details': 'Temporary block — suspicious links',
         'created_at': '2026-07-23T12:00:00Z',
+      },
+      {
+        'id': 'act_seed_7',
+        'actor_id': 'user_client',
+        'actor_name': 'Client Demo',
+        'action': 'escrow.released',
+        'target_type': 'escrow_deal',
+        'target_id': 'esc_seed_done',
+        'details': 'Mobile App UI Design: 432 000 د.ج → Maria Chen, 48 000 د.ج platform fee',
+        'created_at': '2026-07-21T16:30:00Z',
       },
     ];
     for (final a in activities) {
@@ -850,6 +886,73 @@ abstract final class DatabaseSeeder {
       'details': 'Le profil contient des liens suspects.',
       'status': 'open',
       'created_at': '2026-07-11T12:00:00Z',
+    });
+
+    await txn.insert('dm_conversations', {
+      'id': 'dm_seed_1',
+      'client_id': 'user_client',
+      'provider_id': 'user_teacher_maria',
+      'created_at': '2026-07-13T10:00:00Z',
+      'updated_at': '2026-07-13T11:30:00Z',
+    });
+
+    await txn.insert('dm_messages', {
+      'id': 'dmm_seed_1',
+      'conversation_id': 'dm_seed_1',
+      'sender_id': 'user_client',
+      'kind': 'text',
+      'body': 'Hi Maria, I need a Flutter landing page for my startup. Can you help?',
+      'created_at': '2026-07-13T10:05:00Z',
+    });
+
+    await txn.insert('dm_messages', {
+      'id': 'dmm_seed_2',
+      'conversation_id': 'dm_seed_1',
+      'sender_id': 'user_teacher_maria',
+      'kind': 'text',
+      'body': 'Sure! I can deliver a responsive landing page with animations. See my offer below.',
+      'created_at': '2026-07-13T10:15:00Z',
+    });
+
+    await txn.insert('escrow_deals', {
+      'id': 'esc_seed_1',
+      'conversation_id': 'dm_seed_1',
+      'client_id': 'user_client',
+      'provider_id': 'user_teacher_maria',
+      'title': 'Flutter landing page',
+      'description': 'Responsive landing page, 3 sections, contact form, delivery in 5 days.',
+      'amount_cents': 4500000,
+      'platform_fee_bps': 1000,
+      'status': 'pending_payment',
+      'created_at': '2026-07-13T11:30:00Z',
+    });
+
+    await txn.insert('dm_messages', {
+      'id': 'dmm_seed_3',
+      'conversation_id': 'dm_seed_1',
+      'sender_id': 'user_teacher_maria',
+      'kind': 'offer',
+      'body': 'Flutter landing page',
+      'deal_id': 'esc_seed_1',
+      'created_at': '2026-07-13T11:30:00Z',
+    });
+
+    await txn.insert('escrow_deals', {
+      'id': 'esc_seed_done',
+      'conversation_id': 'dm_seed_1',
+      'client_id': 'user_client',
+      'provider_id': 'user_teacher_maria',
+      'title': 'Mobile App UI Design',
+      'description': 'Completed escrow — UI mockups and Flutter widgets.',
+      'amount_cents': 48000000,
+      'platform_fee_bps': 1000,
+      'status': 'completed',
+      'platform_fee_cents': 4800000,
+      'provider_payout_cents': 43200000,
+      'created_at': '2026-07-19T09:00:00Z',
+      'funded_at': '2026-07-20T14:00:00Z',
+      'delivered_at': '2026-07-21T10:00:00Z',
+      'completed_at': '2026-07-21T16:30:00Z',
     });
 
     await txn.insert('contact_messages', {

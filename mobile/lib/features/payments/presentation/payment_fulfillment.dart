@@ -71,6 +71,18 @@ abstract final class PaymentFulfillment {
           container.invalidate(printOrdersProvider);
           container.invalidate(adminStatsProvider);
         }
+      case PaymentPurpose.escrow:
+        if (args.itemId != null) {
+          final deal = await db.getEscrowDeal(args.itemId!);
+          await db.fundEscrowDeal(args.itemId!);
+          if (deal != null) {
+            container.invalidate(dmMessagesProvider(deal.conversationId));
+            container.invalidate(dmConversationProvider(deal.conversationId));
+          }
+          container.invalidate(conversationsProvider);
+          container.invalidate(escrowDealProvider(args.itemId!));
+          container.invalidate(adminStatsProvider);
+        }
     }
 
     await logPayment(

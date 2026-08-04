@@ -5,6 +5,7 @@ import '../../core/config/app_config.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/marketplace_model.dart';
+import '../models/dm_model.dart';
 import '../models/hub_admin_model.dart';
 import '../models/publication_model.dart';
 import '../services/auth_repository.dart';
@@ -330,4 +331,22 @@ final paymentLogsProvider = FutureProvider<List<PaymentLogRecord>>((ref) async {
 
 final adminActivityLogsProvider = FutureProvider<List<AdminActivityLog>>((ref) async {
   return ref.watch(databaseProvider).getAdminActivityLogs();
+});
+
+final conversationsProvider = FutureProvider<List<DmConversation>>((ref) async {
+  final userId = ref.watch(authProvider).user?.id;
+  if (userId == null) return [];
+  return ref.watch(databaseProvider).getConversationsForUser(userId);
+});
+
+final dmConversationProvider = FutureProvider.family<DmConversation?, String>((ref, id) async {
+  return ref.watch(databaseProvider).getConversation(id);
+});
+
+final dmMessagesProvider = FutureProvider.family<List<DmMessage>, String>((ref, conversationId) async {
+  return ref.watch(databaseProvider).getDmMessages(conversationId);
+});
+
+final escrowDealProvider = FutureProvider.family<EscrowDeal?, String>((ref, dealId) async {
+  return ref.watch(databaseProvider).getEscrowDeal(dealId);
 });

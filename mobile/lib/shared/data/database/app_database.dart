@@ -2,11 +2,13 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/lesson_videos.dart';
+import '../../../core/utils/money.dart';
 import '../../models/course_model.dart';
 import '../../models/marketplace_model.dart';
 import '../../models/hub_admin_model.dart';
 import '../../models/user_model.dart';
 import '../../models/publication_model.dart';
+import '../../models/dm_model.dart';
 import 'database_schema.dart';
 import 'database_seeder.dart';
 
@@ -53,6 +55,9 @@ class AppDatabase {
           'publications',
           'payment_logs',
           'admin_activity_logs',
+          'dm_messages',
+          'escrow_deals',
+          'dm_conversations',
           'courses',
           'gamification_wallets',
           'refresh_tokens',
@@ -1038,6 +1043,16 @@ class AppDatabase {
       openReports: await count("SELECT COUNT(*) FROM user_reports WHERE status = 'open'"),
       newMessages: await count("SELECT COUNT(*) FROM contact_messages WHERE status = 'new'"),
       jobs: await count('SELECT COUNT(*) FROM job_postings'),
+      escrowActive: await count(
+        "SELECT COUNT(*) FROM escrow_deals WHERE status IN ('pending_payment','funded','delivered')",
+      ),
+      escrowCompleted: await count("SELECT COUNT(*) FROM escrow_deals WHERE status = 'completed'"),
+      platformFeesCents: Sqflite.firstIntValue(
+            await db.rawQuery(
+              "SELECT COALESCE(SUM(platform_fee_cents), 0) FROM escrow_deals WHERE status = 'completed'",
+            ),
+          ) ??
+          0,
     );
   }
 
@@ -1470,6 +1485,356 @@ class AppDatabase {
       imagePaths: imagePaths,
       kind: kind,
       createdAt: now,
+    );
+  }
+
+  // ── DM & escrow ───────────────────────────────────────────────────
+
+  Future<DmConversation> openConversation(String userId, String otherUserId) async {
+    final u1 = await findUserById(userId);
+    final u2 = await findUserById(otherUserId);
+    if (u1 == null || u2 == null) throw StateError('User not found');
+
+    String clientId;
+    String providerId;
+    if (u1.role == UserRole.teacher && u2.role != UserRole.teacher) {
+      providerId = userId;
+      clientId = otherUserId;
+    } else if (u2.role == UserRole.teacher && u1.role != UserRole.teacher) {
+      providerId = otherUserId;
+      clientId = userId;
+    } else if (u1.role == UserRole.client) {
+      clientId = userId;
+      providerId = otherUserId;
+    } else if (u2.role == UserRole.client) {
+      clientId = otherUserId;
+      providerId = userId;
+    } else {
+      clientId = userId;
+      providerId = otherUserId;
+    }
+
+    final existing = await db.query(
+      'dm_conversations',
+      where: 'client_id = ? AND provider_id = ?',
+      whereArgs: [clientId, providerId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      return _mapConversation(existing.first);
+    }
+
+    final now = DateTime.now().toUtc().toIso8601String();
+    final id = 'dm_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('dm_conversations', {
+      'id': id,
+      'client_id': clientId,
+      'provider_id': providerId,
+      'created_at': now,
+      'updated_at': now,
+    });
+    return _mapConversation({
+      'id': id,
+      'client_id': clientId,
+      'provider_id': providerId,
+      'created_at': now,
+      'updated_at': now,
+    });
+  }
+
+  Future<List<DmConversation>> getConversationsForUser(String userId) async {
+    final rows = await db.rawQuery('''
+      SELECT c.*,
+        cl.display_name AS client_name,
+        pr.display_name AS provider_name,
+        (SELECT body FROM dm_messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_preview,
+        (SELECT created_at FROM dm_messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_at
+      FROM dm_conversations c
+      JOIN users cl ON cl.id = c.client_id
+      JOIN users pr ON pr.id = c.provider_id
+      WHERE c.client_id = ? OR c.provider_id = ?
+      ORDER BY c.updated_at DESC
+    ''', [userId, userId]);
+    return rows.map(_mapConversation).toList();
+  }
+
+  Future<DmConversation?> getConversation(String id) async {
+    final rows = await db.rawQuery('''
+      SELECT c.*,
+        cl.display_name AS client_name,
+        pr.display_name AS provider_name,
+        (SELECT body FROM dm_messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_preview,
+        (SELECT created_at FROM dm_messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_at
+      FROM dm_conversations c
+      JOIN users cl ON cl.id = c.client_id
+      JOIN users pr ON pr.id = c.provider_id
+      WHERE c.id = ?
+      LIMIT 1
+    ''', [id]);
+    if (rows.isEmpty) return null;
+    return _mapConversation(rows.first);
+  }
+
+  Future<List<DmMessage>> getDmMessages(String conversationId) async {
+    final rows = await db.rawQuery('''
+      SELECT m.*, u.display_name AS sender_name
+      FROM dm_messages m
+      JOIN users u ON u.id = m.sender_id
+      WHERE m.conversation_id = ?
+      ORDER BY m.created_at ASC
+    ''', [conversationId]);
+    return rows.map(_mapDmMessage).toList();
+  }
+
+  Future<DmMessage> sendDmText({
+    required String conversationId,
+    required String senderId,
+    required String body,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final id = 'dmm_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('dm_messages', {
+      'id': id,
+      'conversation_id': conversationId,
+      'sender_id': senderId,
+      'kind': 'text',
+      'body': body.trim(),
+      'created_at': now,
+    });
+    await db.update(
+      'dm_conversations',
+      {'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [conversationId],
+    );
+    final user = await findUserById(senderId);
+    return DmMessage(
+      id: id,
+      conversationId: conversationId,
+      senderId: senderId,
+      kind: 'text',
+      body: body.trim(),
+      createdAt: now,
+      senderName: user?.displayName,
+    );
+  }
+
+  Future<DmMessage> sendDmSystem({
+    required String conversationId,
+    required String body,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final id = 'dmm_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('dm_messages', {
+      'id': id,
+      'conversation_id': conversationId,
+      'sender_id': 'system',
+      'kind': 'system',
+      'body': body,
+      'created_at': now,
+    });
+    await db.update(
+      'dm_conversations',
+      {'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [conversationId],
+    );
+    return DmMessage(
+      id: id,
+      conversationId: conversationId,
+      senderId: 'system',
+      kind: 'system',
+      body: body,
+      createdAt: now,
+      senderName: 'Samooth',
+    );
+  }
+
+  Future<EscrowDeal> createEscrowOffer({
+    required String conversationId,
+    required String providerId,
+    required String title,
+    required String description,
+    required int amountCents,
+  }) async {
+    final conv = await getConversation(conversationId);
+    if (conv == null || conv.providerId != providerId) {
+      throw StateError('Only the freelancer can send an offer');
+    }
+
+    final now = DateTime.now().toUtc().toIso8601String();
+    final dealId = 'esc_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('escrow_deals', {
+      'id': dealId,
+      'conversation_id': conversationId,
+      'client_id': conv.clientId,
+      'provider_id': providerId,
+      'title': title.trim(),
+      'description': description.trim(),
+      'amount_cents': amountCents,
+      'platform_fee_bps': AppConfig.escrowPlatformFeeBps,
+      'status': EscrowStatus.pendingPayment.storageKey,
+      'created_at': now,
+    });
+
+    final msgId = 'dmm_${DateTime.now().millisecondsSinceEpoch + 1}';
+    await db.insert('dm_messages', {
+      'id': msgId,
+      'conversation_id': conversationId,
+      'sender_id': providerId,
+      'kind': 'offer',
+      'body': title.trim(),
+      'deal_id': dealId,
+      'created_at': now,
+    });
+    await db.update(
+      'dm_conversations',
+      {'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [conversationId],
+    );
+
+    return (await getEscrowDeal(dealId))!;
+  }
+
+  Future<EscrowDeal?> getEscrowDeal(String id) async {
+    final rows = await db.query('escrow_deals', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return null;
+    return _mapEscrowDeal(rows.first);
+  }
+
+  Future<void> fundEscrowDeal(String dealId) async {
+    final deal = await getEscrowDeal(dealId);
+    if (deal == null || deal.status != EscrowStatus.pendingPayment) return;
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.update(
+      'escrow_deals',
+      {'status': EscrowStatus.funded.storageKey, 'funded_at': now},
+      where: 'id = ?',
+      whereArgs: [dealId],
+    );
+    await sendDmSystem(
+      conversationId: deal.conversationId,
+      body: 'Escrow funded — ${Money.format(deal.amountCents)} held until client approval.',
+    );
+  }
+
+  Future<void> markEscrowDelivered(String dealId, String providerId) async {
+    final deal = await getEscrowDeal(dealId);
+    if (deal == null || deal.providerId != providerId || deal.status != EscrowStatus.funded) return;
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.update(
+      'escrow_deals',
+      {'status': EscrowStatus.delivered.storageKey, 'delivered_at': now},
+      where: 'id = ?',
+      whereArgs: [dealId],
+    );
+    await sendDmSystem(
+      conversationId: deal.conversationId,
+      body: 'Work marked as delivered — awaiting client approval.',
+    );
+  }
+
+  Future<EscrowDeal> approveEscrowDeal(String dealId, String clientId) async {
+    final deal = await getEscrowDeal(dealId);
+    if (deal == null || deal.clientId != clientId || deal.status != EscrowStatus.delivered) {
+      throw StateError('Cannot approve this deal');
+    }
+    final fee = (deal.amountCents * deal.platformFeeBps) ~/ 10000;
+    final payout = deal.amountCents - fee;
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.update(
+      'escrow_deals',
+      {
+        'status': EscrowStatus.completed.storageKey,
+        'platform_fee_cents': fee,
+        'provider_payout_cents': payout,
+        'completed_at': now,
+      },
+      where: 'id = ?',
+      whereArgs: [dealId],
+    );
+    await awardRewards(
+      deal.providerId,
+      coins: AppConfig.bookingReceivedCoins,
+      xp: AppConfig.bookingReceivedXp,
+    );
+    await sendDmSystem(
+      conversationId: deal.conversationId,
+      body:
+          'Payment released: ${Money.format(payout)} to freelancer, ${Money.format(fee)} platform fee (10%).',
+    );
+
+    final client = await findUserById(clientId);
+    final provider = await findUserById(deal.providerId);
+    await insertPaymentLog(
+      userId: clientId,
+      userName: client?.displayName,
+      purpose: 'escrowRelease',
+      title: '${deal.title} — platform fee',
+      amountCents: fee,
+      gateway: 'escrow',
+      status: 'success',
+      reference: dealId,
+      itemId: dealId,
+    );
+    await insertAdminActivityLog(
+      actorId: clientId,
+      actorName: client?.displayName,
+      action: 'escrow.released',
+      targetType: 'escrow_deal',
+      targetId: dealId,
+      details:
+          '${deal.title}: ${Money.format(payout)} → ${provider?.displayName ?? 'freelancer'}, ${Money.format(fee)} platform fee',
+    );
+
+    return (await getEscrowDeal(dealId))!;
+  }
+
+  DmConversation _mapConversation(Map<String, Object?> row) {
+    return DmConversation(
+      id: row['id'] as String,
+      clientId: row['client_id'] as String,
+      providerId: row['provider_id'] as String,
+      createdAt: row['created_at'] as String,
+      updatedAt: row['updated_at'] as String,
+      clientName: row['client_name'] as String?,
+      providerName: row['provider_name'] as String?,
+      lastMessagePreview: row['last_preview'] as String?,
+      lastMessageAt: row['last_at'] as String?,
+    );
+  }
+
+  DmMessage _mapDmMessage(Map<String, Object?> row) {
+    return DmMessage(
+      id: row['id'] as String,
+      conversationId: row['conversation_id'] as String,
+      senderId: row['sender_id'] as String,
+      kind: row['kind'] as String,
+      body: row['body'] as String,
+      createdAt: row['created_at'] as String,
+      dealId: row['deal_id'] as String?,
+      senderName: row['sender_name'] as String?,
+    );
+  }
+
+  EscrowDeal _mapEscrowDeal(Map<String, Object?> row) {
+    return EscrowDeal(
+      id: row['id'] as String,
+      conversationId: row['conversation_id'] as String,
+      clientId: row['client_id'] as String,
+      providerId: row['provider_id'] as String,
+      title: row['title'] as String,
+      description: row['description'] as String,
+      amountCents: row['amount_cents'] as int,
+      platformFeeBps: row['platform_fee_bps'] as int,
+      status: EscrowStatusX.fromKey(row['status'] as String?),
+      providerPayoutCents: row['provider_payout_cents'] as int?,
+      platformFeeCents: row['platform_fee_cents'] as int?,
+      createdAt: row['created_at'] as String,
+      fundedAt: row['funded_at'] as String?,
+      deliveredAt: row['delivered_at'] as String?,
+      completedAt: row['completed_at'] as String?,
     );
   }
 
